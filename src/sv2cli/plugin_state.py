@@ -59,7 +59,6 @@ def replace_project(raw, project, project_path=""):
         suffix=component[len(text[:end].encode("utf8",errors="surrogateescape")):]
         envelope["projectContent"]=json.dumps(project,ensure_ascii=False,allow_nan=False)
         envelope["projectPath"]=project_path
-        if "araBridgeEnabled" in envelope:envelope["araBridgeEnabled"]=False
         replacement=json.dumps(envelope,ensure_ascii=False,allow_nan=False).encode("utf8")+suffix
         elem.text=encode_memory(replacement)
         xml=ET.tostring(root,encoding="utf8",xml_declaration=True)

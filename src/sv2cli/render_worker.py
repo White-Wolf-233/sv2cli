@@ -112,11 +112,8 @@ def run(job):
         raise SVError(f"Mix peaks at {peak:.3f}; reduce track gains before rendering", "clipping")
     bits=job.get("bitDepth",16)
     if bits not in {16,24}:raise SVError("VST3 output supports PCM16/24", "unsupported_format")
-    pcm=np.clip(best.T,-1,1-1/(1<<(bits-1)))
-    integers=np.rint(pcm*(1<<(bits-1))).astype(np.int32)
-    if bits==16:data=integers.astype("<i2").tobytes()
-    else:
-        b=integers.astype("<i4").view(np.uint8).reshape(-1,4);data=b[:,:3].tobytes()
+    from .pcm import encode
+    data=encode(best,bits)
     target=work/"render.wav"
     with wave.open(str(target),"wb") as f:
         f.setnchannels(channels);f.setsampwidth(bits//8);f.setframerate(sample_rate);f.writeframes(data)

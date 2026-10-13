@@ -23,7 +23,7 @@ def test_state_replacement_preserves_opaque_bytes(project):
     assert b.endswith(suffix)
     obj,end=json.JSONDecoder().raw_decode(b.decode("utf8",errors="surrogateescape"))
     assert obj["custom"]==[1,2]
-    assert obj["araBridgeEnabled"] is False
+    assert obj["araBridgeEnabled"] is True
     assert json.loads(obj["projectContent"])==project.data
 
 def test_unknown_plugin_state_rejected(project):
