@@ -1,0 +1,18 @@
+CAPABILITIES = {
+    "project": {"status":"implemented", "functions":["new","inspect","validate","conservative repair","lossless unknown-field preservation","diff","score lock","non-overwriting save","RFC6902 JSON Patch for version-specific fields"]},
+    "tracks_groups": {"status":"implemented", "functions":["list","rename","add","remove","clone","color/order/render inclusion","group shift/transpose/remove","shared-group copy-on-write"]},
+    "voice": {"status":"implemented", "functions":["cached catalog scan","database switch including group overrides","explicit inheritance","language/phoneset override","dictionary assignment","voice parameters","Vocal Mode values","choir stem count/separation"]},
+    "notes_lyrics": {"status":"implemented", "functions":["list/filter","replace/update","transpose/shift","lyrics","phonemes","note attributes","rap/spoken fields via recipe"]},
+    "tuning": {"status":"implemented", "functions":["parameter automation","pitch-control payloads","existing Retake activation"]},
+    "timing": {"status":"implemented", "functions":["tempo map","meter map","blick/quarter/seconds conversions"]},
+    "mixer_effects": {"status":"implemented", "functions":["gain/pan/mute/solo","room","EQ","compressor","reverb"]},
+    "conversion": {"status":"implemented", "functions":["notes JSON/CSV","MIDI import/export with timing loss checks"]},
+    "render": {"status":"implemented_requires_licensed_plugin", "functions":["VST3 worker","whole-project/selected-track mix","stems","PCM16/24 mono/stereo","tempo synchronization","warmup/convergence","timeout/cancellation","command backend","audio validation"]},
+    "batch_config": {"status":"implemented", "functions":["named profiles","environment overrides","doctor","transactional JSON recipes","batch jobs","JSON output/exit codes"]},
+    "live": {"status":"requires_started_bridge", "functions":["host/project queries","computed phonemes/pitch","play/stop/pause/seek","Retake generation using official API"]},
+    "licensing_installation": {"status":"host_only", "reason":"Activation, purchases, product downloads and account operations remain in Dreamtonics Product Manager."},
+    "advanced_audio_export": {"status":"host_only", "reason":"Isolated aspiration and native pitch export have no documented public scripting API; VST3 outputs the main audio bus only."},
+    "native_full_ara": {"status":"host_only", "reason":"This CLI hosts the instrument plugin, not the Full ARA plugin."},
+    "voice_to_midi": {"status":"host_only", "reason":"Voice-to-MIDI inference is not exposed by the public API."},
+    "musicxml": {"status":"host_import", "reason":"Use Studio's native MusicXML import; this release avoids silently losing repeats, grace notes, ties or multiple voices."},
+}

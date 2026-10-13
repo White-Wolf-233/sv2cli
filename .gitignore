@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+research/
+probe_state.bin
+local-validation/
+*.wav
+*.mp3
+*.vstpreset
+*.bin
+.sv2cli-jobs/

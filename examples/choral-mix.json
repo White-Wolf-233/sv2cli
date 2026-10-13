@@ -1,0 +1,5 @@
+[
+  {"op":"voice.set","tracks":["#1"],"values":{"choirNumStems":4,"paramGender":0.1}},
+  {"op":"mixer.set","tracks":["#1"],"values":{"gainDecibel":-3,"pan":0.15}},
+  {"op":"effects.set","tracks":["#1"],"values":{"reverb":{"enabled":true,"type":"clean","preDelay":0.025,"decay":1.5,"dryWetRatio":0.12}}}
+]

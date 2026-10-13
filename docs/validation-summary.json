@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-13",
+  "coreTests": {"passed":66,"environment":"Windows 11, Python 3.12"},
+  "nativeRender": {
+    "host":"DawDreamer 0.9.0",
+    "plugin":"Synthesizer V Studio 2 Plugin 2.2.1",
+    "voice":"Kasane Teto AI 2",
+    "threeNoteProbe":{"verified":true,"durationSeconds":8,"channels":2,"bitDepth":16,"peak":0.128570556640625,"rms":0.01993484910129523,"clippedRatio":0},
+    "eightTrackExcerpt":{"verified":false,"status":"verification in progress"},
+    "macOS":{"verified":false},
+    "linuxNativeSV2":{"supported":false}
+  },
+  "fullPrivateProject":{"structurallyValid":true,"tracks":10,"notes":3277,"sourceUnchanged":true},
+  "liveBridge":{"luaAndTransportMockTests":true,"editorIntegrationVerified":false},
+  "subjectiveListeningVerified":false
+}

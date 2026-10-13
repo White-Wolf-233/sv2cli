@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sv2cli"
+version = "0.1.0"
+description = "Portable project editing and VST3 rendering for Synthesizer V Studio 2"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "White-Wolf-233"}]
+keywords = ["synthesizer-v", "svp", "vst3", "cli", "singing-synthesis"]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: OS Independent", "Topic :: Multimedia :: Sound/Audio"]
+dependencies = []
+
+[project.optional-dependencies]
+render = ["dawdreamer>=0.9.0,<0.10", "numpy>=1.24"]
+midi = ["mido>=1.3,<2"]
+dev = ["pytest>=8,<10", "build>=1.2"]
+
+[project.scripts]
+sv2cli = "sv2cli.cli:main"
+
+[project.urls]
+Repository = "https://github.com/White-Wolf-233/sv2cli"
+Issues = "https://github.com/White-Wolf-233/sv2cli/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sv2cli = ["assets/*.lua", "assets/*.LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
