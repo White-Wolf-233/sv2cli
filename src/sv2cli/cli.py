@@ -51,6 +51,10 @@ def _guard_output(source,output):
 
 def execute(a):
     cmd=a.command
+    if getattr(a,"output",None):
+        for key in ("project","source","recipe"):
+            value=getattr(a,key,None)
+            if value:_guard_output(value,a.output)
     if cmd=="doctor":return doctor(a.profile)
     if cmd=="capabilities":return {"version":__version__,"capabilities":CAPABILITIES}
     if cmd=="new":return {"output":new_project(a.name,a.bpm).save(a.output,a.force)}

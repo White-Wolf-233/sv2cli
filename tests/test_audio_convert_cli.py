@@ -46,6 +46,22 @@ def test_cli_source_protection(project,tmp_path,capsys):
     assert path.read_bytes()==before
     assert "source_protected" in capsys.readouterr().err
 
+@pytest.mark.parametrize("command",["notes","convert"])
+def test_queries_and_conversions_also_protect_source(project,tmp_path,command,capsys):
+    path=tmp_path/"p.svp";project.save(path);before=path.read_bytes()
+    args=[command,str(path),"-o",str(path),"--force"]
+    if command=="convert":args.insert(1,"csv-out")
+    assert main(args)==2
+    assert path.read_bytes()==before
+
+def test_midi_chinese_track_names_and_lyrics(project,tmp_path):
+    project.data["tracks"][0]["name"]="测试声部"
+    project.data["tracks"][0]["mainGroup"]["notes"][0]["lyrics"]="啊"
+    path=tmp_path/"notes.mid";out=tmp_path/"out.svp"
+    midi_export(project,path);midi_import(path,out)
+    q=Project.load(out)
+    assert q.data["tracks"][0]["name"]=="测试声部" and q.notes()[0]["lyrics"]=="啊"
+
 def test_cli_json_error_and_exit(capsys):
     assert main(["inspect","does-not-exist.svp"])==2
     assert json.loads(capsys.readouterr().err)["error"]["code"]=="invalid_file"

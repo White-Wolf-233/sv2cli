@@ -30,7 +30,7 @@ def _mido():
     except ImportError as e:raise SVError("Install MIDI support: pip install 'sv2cli[midi]'", "missing_dependency") from e
 
 def midi_export(project, output, selectors=None, force=False, ppq=960):
-    mido=_mido();midi=mido.MidiFile(ticks_per_beat=ppq)
+    mido=_mido();midi=mido.MidiFile(ticks_per_beat=ppq,charset="utf8")
     def tick(blick):
         x=blick/QUARTER*ppq
         if abs(x-round(x))>1e-6:raise SVError("MIDI export would round a note; choose a compatible --ppq", "lossy_conversion")
@@ -64,7 +64,7 @@ def midi_export(project, output, selectors=None, force=False, ppq=960):
     return write_new(output,b.getvalue(),force)
 
 def midi_import(source, output, force=False):
-    mido=_mido();midi=mido.MidiFile(source)
+    mido=_mido();midi=mido.MidiFile(source,charset="utf8")
     if midi.type==2:raise SVError("Asynchronous type-2 MIDI is unsupported", "unsupported_format")
     if midi.ticks_per_beat<=0:raise SVError("SMPTE MIDI timecode is unsupported", "unsupported_format")
     project=new_project();project.data["tracks"]=[];tempos={0:120};meter_ticks=[]
