@@ -6,7 +6,7 @@ import sys
 import time
 import wave
 from .errors import SVError
-from .io import read_json, write_json
+from .io import read_json, write_json,configure_utf8
 from .project import Project, QUARTER
 from .plugin_state import replace_project,read_project
 
@@ -127,6 +127,7 @@ def run(job):
     event("complete",audio=str(target),peak=peak)
 
 def main():
+    configure_utf8()
     status=0
     try:
         run(read_json(sys.argv[1]))

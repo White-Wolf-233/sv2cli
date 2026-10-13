@@ -45,6 +45,12 @@ def test_tempo_integration(project):
     project.data["time"]["tempo"]=[{"position":0,"bpm":120},{"position":QUARTER,"bpm":60}]
     assert project.seconds(2*QUARTER)==1.5
 
+def test_integer_float_host_normalization_does_not_change_score(project):
+    q=project.copy()
+    q.data["time"]["startTimeSeconds"]=0.0
+    q.data["time"]["tempo"][0]["bpm"]=120.0
+    assert q.score_fingerprint()==project.score_fingerprint()
+
 def test_track_indices_never_guess_names(project):
     project.data["tracks"].append(deepcopy(project.data["tracks"][0]))
     with pytest.raises(SVError):project.tracks(["Lead"])

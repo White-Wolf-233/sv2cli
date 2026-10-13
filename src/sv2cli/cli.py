@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 from . import __version__
 from .errors import SVError
-from .io import read_json, write_json
+from .io import read_json, write_json,configure_utf8
 from .project import Project, new_project, difference, QUARTER
 from .edit import apply
 from .config import profile, doctor, load_config, set_profile, catalog
@@ -137,6 +137,7 @@ def execute(a):
     return {"output":q.save(a.output,a.force),"scoreAndTimingIdentical":True}
 
 def main(argv=None):
+    configure_utf8()
     try:
         result=execute(_parser().parse_args(argv))
         print(json.dumps(result,ensure_ascii=False,indent=2,allow_nan=False))

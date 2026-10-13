@@ -32,6 +32,12 @@ def numeric(value, label, low, high):
         raise SVError(f"{label} must be in [{low}, {high}]")
     return value
 
+def canonical_numbers(value):
+    if isinstance(value,dict):return {k:canonical_numbers(v) for k,v in value.items()}
+    if isinstance(value,list):return [canonical_numbers(v) for v in value]
+    if isinstance(value,float) and math.isfinite(value) and value.is_integer():return int(value)
+    return value
+
 def empty_group(name="main"):
     return {"name": name, "uuid": guid(), "notes": [], "parameters": {p: {"mode": "cubic", "points": []} for p in sorted(PARAMETERS)}, "vocalModes": {}, "pitchControls": []}
 
@@ -108,7 +114,7 @@ class Project:
         rows = self.notes()
         fields = ("track", "onset", "duration", "pitch", "lyrics", "phonemes", "musicalType", "muted")
         payload = {"notes": [{k:r[k] for k in fields} for r in rows], "time": self.data.get("time"), "trackCount": len(self.data["tracks"])}
-        return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+        return hashlib.sha256(json.dumps(canonical_numbers(payload), sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
     def seconds(self, blick):
         marks = sorted(self.data.get("time", {}).get("tempo", []), key=lambda x:x["position"])

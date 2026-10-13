@@ -3,6 +3,7 @@ import math
 import struct
 import wave
 import pytest
+import subprocess,sys,os
 from sv2cli.audio import check
 from sv2cli.cli import main
 from sv2cli.convert import midi_export,midi_import,csv_export,csv_import
@@ -48,6 +49,13 @@ def test_cli_source_protection(project,tmp_path,capsys):
 def test_cli_json_error_and_exit(capsys):
     assert main(["inspect","does-not-exist.svp"])==2
     assert json.loads(capsys.readouterr().err)["error"]["code"]=="invalid_file"
+
+def test_cli_utf8_under_legacy_windows_pipe_encoding(tmp_path):
+    env=dict(os.environ,PYTHONIOENCODING="cp1252")
+    path=tmp_path/"中文.svp"
+    r=subprocess.run([sys.executable,"-m","sv2cli","new","-o",str(path)],capture_output=True,env=env)
+    assert r.returncode==0
+    assert "中文" in json.loads(r.stdout.decode("utf8"))["output"]
 
 def test_dry_run_writes_nothing(project,tmp_path,capsys):
     path=tmp_path/"p.svp";recipe=tmp_path/"recipe.json";out=tmp_path/"out.svp"
