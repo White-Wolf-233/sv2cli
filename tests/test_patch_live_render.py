@@ -85,3 +85,29 @@ def test_command_backend_rejects_silent_result(project,tmp_path,monkeypatch):
     source=tmp_path/"project.svp";project.save(source);target=tmp_path/"audio.wav"
     with pytest.raises(SVError,match="audio checks"):render(source,target,backend="command",timeout=10)
     assert not target.exists()
+
+def test_stem_job_drops_unreferenced_library_but_preserves_source(project,tmp_path,monkeypatch):
+    from copy import deepcopy
+    from sv2cli.project import empty_group,empty_ref,empty_track,Project
+    import wave,struct
+    active=deepcopy(project.data['tracks'][0]['mainGroup'])
+    active['uuid']='active-library'
+    orphan=empty_group('orphan')
+    project.data['library']=[active,orphan]
+    project.data['tracks'][0]['groups']=[empty_ref(active)]
+    project.data['tracks'].append(empty_track('Unselected'))
+    original=deepcopy(project.data)
+    source=tmp_path/'song.svp';project.save(source)
+    def fake_worker(command,timeout,log):
+        job=json.loads(Path(command[-1]).read_text('utf8'))
+        selected=Project.load(job['project'])
+        assert len(selected.data['tracks'])==1
+        assert [g['uuid'] for g in selected.data['library']]==['active-library']
+        assert [n['pitch'] for n in selected.notes()]==[n['pitch'] for n in project.notes(['#1'])]
+        with wave.open(str(Path(job['work'])/'render.wav'),'wb') as w:
+            w.setparams((2,2,22050,0,'NONE','none'))
+            w.writeframes(struct.pack('<hh',1000,-1000)*round(job['duration']*22050))
+    monkeypatch.setattr('sv2cli.render._worker',fake_worker)
+    monkeypatch.setattr('sv2cli.render.profile',lambda name:{'render_command':['fake','{job}']})
+    render(source,tmp_path/'stem.wav',backend='command',tracks=['#1'],sample_rate=22050)
+    assert Project.load(source).data==original

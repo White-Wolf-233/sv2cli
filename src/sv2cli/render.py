@@ -75,6 +75,12 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
         work=work_root/f"task-{len(reports)+1}";work.mkdir()
         project=original.copy()
         project.data["tracks"]=[t for i,t in project.tracks() if i in indices]
+        # A stem needs only the selected tracks' library references. Loading
+        # orphaned groups keeps unrelated native synthesis/cache state alive.
+        # The user's source library remains untouched.
+        referenced={ref.get("groupID") for _,t in project.tracks() for ref in t.get("groups",[])}
+        referenced.update(t.get("mainRef",{}).get("groupID") for _,t in project.tracks())
+        project.data["library"]=[g for g in project.data.get("library",[]) if g.get("uuid") in referenced]
         # Single-track stems honor its gain/pan/effects, but unrelated solo flags
         # must not mute selected tracks. Explicit mute still means silence.
         if stems or tracks:

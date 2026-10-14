@@ -35,6 +35,13 @@ def run(job):
     state=replace_project(state_path.read_bytes(),project.data)
     state_path.write_bytes(state)
     plugin.load_state(str(state_path))
+    # The plugin's main bus itself can contain 32 channels. Route only its
+    # first stereo pair to a unity-gain final processor, rather than recording
+    # gigabytes of unused output channels for long songs.
+    plugin.record=False
+    master=engine.make_add_processor("master",[1.0])
+    master.record=True
+    event("output_bus",pluginChannels=plugin.get_num_output_channels(),recordedChannels=master.get_num_output_channels())
     event("project_loaded",notes=len(project.notes()))
     marks=project.data["time"]["tempo"]
     if len(marks)==1:
@@ -51,7 +58,7 @@ def run(job):
                 raise SVError("Tempo mark is off the host's 1/960-quarter grid", "unsupported_tempo_grid")
             bpm[round(tick):]=m["bpm"]
         engine.set_bpm(bpm,ppqn)
-    engine.load_graph([(plugin,[])])
+    engine.load_graph([(plugin,[]),(master,["sv2cli"])])
     warmup=job.get("warmupSeconds",15)
     event("warming_up",seconds=warmup)
     # Short waits are reported; the parent remains responsive and can cancel.
@@ -86,7 +93,8 @@ def run(job):
         rms=float(np.sqrt(np.mean(audio**2))) if audio.size else 0
         event("render_pass",attempt=attempt+1,peak=peak,rms=rms)
         missing=missing_windows(audio,sample_rate,expected)
-        event("coverage",missingWindows=len(missing),expectedWindows=len(expected))
+        event("coverage",missingWindows=len(missing),expectedWindows=len(expected),missingWindowExamples=missing[:8])
+        write_json(work/"coverage.json",{"attempt":attempt+1,"expectedWindows":expected,"missingWindows":missing,"peak":peak,"rms":rms},force=True)
         current=envelope(audio,sample_rate)
         if peak>job.get("minPeak",1e-6) and not missing:
             best=audio.copy()
@@ -100,6 +108,9 @@ def run(job):
             if stable>=1 or job.get("singlePass",False):break
         if attempt+1<attempts:loop.wait(job.get("retryDelay",5))
     if best is None:
+        if peak>job.get("minPeak",1e-6):
+            np.save(work/"incomplete-audio.npy",audio)
+            raise SVError(f"Audio has {len(missing)} missing expected windows; inspect coverage.json. No successful output is written.", "incomplete_audio")
         raise SVError("Plugin produced silence. Check voice activation and plugin compatibility; no successful output is written.", "silent_audio")
     if stable<1 and not job.get("singlePass",False):
         if best is not None:np.save(work/"failed-audio.npy",best)
