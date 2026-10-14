@@ -97,9 +97,11 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
         audio=work/"render.wav"
         report=check(audio,expected_seconds=duration)
         if not report["valid"]:raise SVError(f"Render failed audio checks: {report['failures']}; log: {log}","invalid_audio")
+        if (report["sampleRate"],report["channels"],report["bitDepth"])!=(sample_rate,channels,bit_depth):
+            raise SVError(f"Backend output format does not match the requested {sample_rate} Hz / {channels} channel(s) / PCM{bit_depth}; log: {log}","format_mismatch")
         write_new(dest,audio.read_bytes(),force)
         report.update(path=str(dest),trackName=name,log=str(log))
         reports.append(report)
-    manifest={"jobId":job_id,"backend":backend,"source":str(Path(source).resolve()),"sourceScoreFingerprint":original.score_fingerprint(),"audio":reports,"stems":stems,"convergenceRequired":not single_pass,"warmupSeconds":warmup,"attemptLimit":attempts,"work":str(work_root),"subjectiveListeningVerified":False}
+    manifest={"jobId":job_id,"backend":backend,"source":str(Path(source).resolve()),"sourceScoreFingerprint":original.score_fingerprint(),"audio":reports,"stems":stems,"loadedScoreVerified":backend=="vst3","expectedActivityChecked":backend=="vst3","convergenceRequired":backend=="vst3" and not single_pass,"warmupSeconds":warmup,"attemptLimit":attempts,"work":str(work_root),"subjectiveListeningVerified":False}
     write_json(manifest_path,manifest,force)
     return manifest

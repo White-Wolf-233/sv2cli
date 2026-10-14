@@ -27,7 +27,7 @@ def _parser():
     s=source("repair");write(s)
     s=source("diff");s.add_argument("other");s.add_argument("--summary",action="store_true")
     s=source("edit", "Apply a transactional JSON operation recipe");write(s);s.add_argument("--recipe",required=True);s.add_argument("--allow-score-changes",action="store_true");s.add_argument("--score-lock",action="store_true");s.add_argument("--dry-run",action="store_true")
-    s=source("voice", "Set voice identity or parameters for selected tracks");write(s);tracks(s);s.add_argument("--name");s.add_argument("--language",default="japanese");s.add_argument("--phoneset",default="romaji");s.add_argument("--backend",default="SVR3");s.add_argument("--database-version",default="201");s.add_argument("--language-override");s.add_argument("--inherit",action="store_true");s.add_argument("--clear-dictionary",action="store_true");s.add_argument("--params",help="JSON object or @path.json");s.add_argument("--scope",choices=["main","all"],default="all")
+    s=source("voice", "Set voice identity or parameters for selected tracks");write(s);tracks(s);s.add_argument("--name");s.add_argument("--language",default="japanese");s.add_argument("--phoneset",default="romaji");s.add_argument("--backend",default="SVR3");s.add_argument("--database-version",default="201");s.add_argument("--language-override");s.add_argument("--override-phoneset");s.add_argument("--inherit",action="store_true");s.add_argument("--clear-dictionary",action="store_true");s.add_argument("--params",help="JSON object or @path.json");s.add_argument("--scope",choices=["main","all"],default="all")
     s=source("mixer");write(s);tracks(s);s.add_argument("--gain",type=float);s.add_argument("--pan",type=float);s.add_argument("--mute",choices=["true","false"]);s.add_argument("--solo",choices=["true","false"])
     v=sub.add_parser("voices");v.add_argument("--name");v.add_argument("--data-root",action="append")
     c=sub.add_parser("config");c.add_argument("action",choices=["show","set"]);c.add_argument("--name",default="default");c.add_argument("--value",help="JSON object or @path.json")
@@ -130,7 +130,10 @@ def execute(a):
             db={"name":a.name,"language":a.language,"phoneset":a.phoneset,"backendType":a.backend,"version":a.database_version,"languageOverride":"","phonesetOverride":""}
             ops.append({"op":"voice.switch","tracks":a.track,"database":db,"inherit":a.inherit,"clearDictionary":a.clear_dictionary})
         if a.params:ops.append({"op":"voice.set","tracks":a.track,"values":_value(a.params),"scope":a.scope})
-        if a.language_override is not None:ops.append({"op":"language.set","tracks":a.track,"language":a.language_override})
+        if a.language_override is not None:
+            op={"op":"language.set","tracks":a.track,"language":a.language_override}
+            if a.override_phoneset is not None:op["phoneset"]=a.override_phoneset
+            ops.append(op)
         if not ops:raise SVError("Specify --name, --params or --language-override")
     elif cmd=="mixer":
         values={k:v for k,v in {"gainDecibel":a.gain,"pan":a.pan,"mute":None if a.mute is None else a.mute=="true","solo":None if a.solo is None else a.solo=="true"}.items() if v is not None}

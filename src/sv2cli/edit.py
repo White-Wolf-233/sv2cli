@@ -77,10 +77,17 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
                 raise SVError("voice.switch needs database.name and database.backendType")
             for _, t in result.tracks(selectors):
                 refs = [r for r,_ in result.references(t)]
-                refs[0]["database"] = deepcopy(db)
+                def switched(ref):
+                    value=deepcopy(db)
+                    if op.get("keepLanguageOverride",True):
+                        old=ref.get("database",{})
+                        for key in ("languageOverride","phonesetOverride"):
+                            if old.get(key) and not value.get(key):value[key]=old[key]
+                    return value
+                refs[0]["database"] = switched(refs[0])
                 # Clearing group overrides to inherit avoids hidden stale singers.
                 for ref in refs[1:]:
-                    ref["database"] = {"name":"", "language":"", "phoneset":"", "languageOverride":"", "phonesetOverride":"", "backendType":"", "version":"-2"} if op.get("inherit", False) else deepcopy(db)
+                    ref["database"] = {"name":"", "language":"", "phoneset":"", "languageOverride":"", "phonesetOverride":"", "backendType":"", "version":"-2"} if op.get("inherit", False) else switched(ref)
                 if op.get("clearDictionary", False):
                     for ref in refs:
                         ref["dictionary"] = ""
@@ -91,8 +98,9 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
             for _,t in result.tracks(selectors):
                 for r,_ in result.references(t):
                     r.setdefault("database", {})["languageOverride"] = language
-                    if "phoneset" in op:
-                        r["database"]["phonesetOverride"] = op["phoneset"]
+                    if "phoneset" in op:r["database"]["phonesetOverride"] = op["phoneset"]
+                    elif language in {"","mandarin","japanese"}:
+                        r["database"]["phonesetOverride"]={"":"","mandarin":"xsampa","japanese":"romaji"}[language]
         elif name == "dictionary.set":
             if not isinstance(op.get("dictionary"),str):raise SVError("dictionary must be a string")
             for _,t in result.tracks(selectors):

@@ -10,7 +10,7 @@ Score-changing operations need `--allow-score-changes`. `--score-lock` always ta
 
 | Operation | Required / optional fields |
 |---|---|
-| `voice.switch` | `database` (name, backendType, language, phoneset, version); `inherit`, `clearDictionary` |
+| `voice.switch` | `database` (name, backendType, language, phoneset, version); `inherit`, `clearDictionary`, `keepLanguageOverride` (default true) |
 | `voice.set` | `values`; `scope` = all/main |
 | `language.set` | `language`; optional `phoneset` |
 | `dictionary.set` | `dictionary` |
@@ -37,6 +37,8 @@ Score-changing operations need `--allow-score-changes`. `--score-lock` always ta
 | `json.patch` | `patch` RFC6902 array; add/remove/replace/copy/move/test |
 
 Timing is integer **blicks**, with `705600000` per quarter. Note onsets in `notes.replace` are absolute; `notes.update` values and automation points are group-local. Filtering by `start`/`end` uses absolute note onset. `notes` query uses interval overlap. Group index 0 in offline note rows represents the main group; library references follow it. The live API uses Studio's one-based reference indexing instead.
+
+Singer switching preserves existing nonempty cross-language/phoneset overrides unless `keepLanguageOverride` is false. `language.set` automatically pairs Mandarin with `xsampa` and Japanese with `romaji`; clearing the override clears its phoneset. For other languages supply the bank's matching `phoneset` explicitly when necessary. The high-level command exposes this as `--override-phoneset`. This is separate from `--phoneset`, which identifies the singer's native language encoding.
 
 `paramToneShift` is in cents (SV2 voice parameter), not MIDI transposition. `paramGender`, `paramTension`, `paramBreathiness` have range -1..1. Voice fields not recognized by the high-level editor can be set through a guarded `json.patch`; field support remains version-specific.
 

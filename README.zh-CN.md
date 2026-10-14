@@ -32,6 +32,8 @@ sv2cli diff song.svp mixed.svp --summary
 
 默认声库字段为 SV2 日语、SVR3、201、romaji；其他声库可指定 `--database-version`、`--language`、`--phoneset`、`--backend`。缓存声库目录不等于已安装或已激活，`voices` 会明确标注。跨语言切换保留原歌词和音素；要改音素，需要明确进行谱面编辑。
 
+切换声库保留原有跨语言及音素集设置；指定中文覆盖时自动配套 `xsampa`，日语配套 `romaji`。其他语言需要指定音素集时使用 `--override-phoneset`，避免语言切换后出现静音。
+
 参数文件可设置 Gender、Tone Shift、气声、张力、Vocal Mode、合唱人数等。`examples/male-voice.json` 只是通用示例，不是经过试听的最佳音色。
 
 ## 锁谱与批处理

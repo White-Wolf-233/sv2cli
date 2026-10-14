@@ -28,6 +28,17 @@ def test_voice_switch_removes_stale_group_overrides(project):
     assert q.data["tracks"][0]["groups"][0]["database"]["name"]==""
     assert q.data["tracks"][0]["groups"][0]["database"]["version"]=="-2"
 
+def test_voice_switch_keeps_cross_language_pronunciation(project):
+    r=project.data["tracks"][0]["mainRef"]
+    r["database"].update(languageOverride="mandarin",phonesetOverride="xsampa")
+    q=apply(project,[{"op":"voice.switch","database":{"name":"New Singer","backendType":"SVR3"}}])
+    db=q.data["tracks"][0]["mainRef"]["database"]
+    assert db["languageOverride"]=="mandarin" and db["phonesetOverride"]=="xsampa"
+
+def test_mandarin_override_sets_matching_phoneset(project):
+    q=apply(project,[{"op":"language.set","language":"mandarin"}])
+    assert q.data["tracks"][0]["mainRef"]["database"]["phonesetOverride"]=="xsampa"
+
 def test_copy_on_write_shared_group(project):
     t1=project.data["tracks"][0];g=deepcopy(t1["mainGroup"]);g["uuid"]="shared-group"
     t1["mainGroup"]["notes"]=[];t1["groups"]=[empty_ref(g)]

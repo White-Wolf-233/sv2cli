@@ -60,8 +60,8 @@ def test_bridge_lua_syntax_and_read_dispatch(tmp_path):
 def test_command_backend_real_process_and_audio_validation(project,tmp_path,monkeypatch):
     config=tmp_path/"config.json";monkeypatch.setenv("SV2CLI_CONFIG",str(config))
     script=tmp_path/"fake_backend.py"
-    script.write_text('import sys,wave,math,struct\nfrom pathlib import Path\nseconds=float(sys.argv[2]);rate=8000\nwith wave.open(sys.argv[1],"wb") as f:\n f.setparams((1,2,rate,0,"NONE","none"));f.writeframes(b"".join(struct.pack("<h",int(math.sin(i/10)*1000)) for i in range(round(rate*seconds))))\n')
-    write_json(config,{"profiles":{"default":{"render_command":[sys.executable,str(script),"{output}","{duration}"]}}})
+    script.write_text('import sys,wave,math,struct,json\nfrom pathlib import Path\nj=json.loads(Path(sys.argv[2]).read_text());seconds=j["duration"];rate=j["sampleRate"];channels=j["channels"]\nwith wave.open(sys.argv[1],"wb") as f:\n f.setparams((channels,2,rate,0,"NONE","none"));f.writeframes(b"".join(struct.pack("<h",int(math.sin(i/10)*1000))*channels for i in range(round(rate*seconds))))\n')
+    write_json(config,{"profiles":{"default":{"render_command":[sys.executable,str(script),"{output}","{job}"]}}})
     source=tmp_path/"project.svp";project.save(source);target=tmp_path/"audio.wav"
     result=render(source,target,backend="command",timeout=10)
     assert target.stat().st_size>44 and result["audio"][0]["valid"]

@@ -32,6 +32,8 @@ sv2cli diff song.svp song-balanced.svp --summary
 
 `--track` accepts an exact name or a one-based `#N`; repeat it to select multiple tracks. Omitting it selects all tracks. Voice identities are exact names, not fuzzy matches. If your bank uses another database version/language/phoneset, supply `--database-version`, `--language`, `--phoneset` and `--backend`; defaults are SV2 Japanese/SVR3/201/romaji. A successful file edit is not proof that the selected singer is installed or activated. Cached catalog entries (`sv2cli voices`) are labeled accordingly.
 
+Switching singers preserves existing cross-language pronunciation overrides. Mandarin language override also sets the matching `xsampa` phoneset; Japanese uses `romaji`. `--override-phoneset` explicitly selects the override encoding for other language/bank combinations. Lyrics and explicit phonemes stay unchanged.
+
 Every write needs a new output filename. Existing outputs fail unless `--force` is supplied, and source SVP files cannot be overwritten even with `--force`. Unknown JSON fields are preserved.
 
 Apply a recipe atomically and enforce score identity:
