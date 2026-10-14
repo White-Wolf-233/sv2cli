@@ -4,8 +4,16 @@ import struct
 from pathlib import Path
 from .errors import SVError
 
+def _numpy():
+    try:
+        import numpy as np
+        return np
+    except ImportError:
+        return None
+
 def check(path, expected_seconds=None, min_peak=1e-6, clipping_limit=0.001):
     path=Path(path)
+    np=_numpy()
     try:
         with path.open("rb") as f:
             header=f.read(12)
@@ -38,6 +46,25 @@ def check(path, expected_seconds=None, min_peak=1e-6, clipping_limit=0.001):
                 f.seek(pos);remaining=size
                 while remaining:
                     b=f.read(min(remaining,align*16384));remaining-=len(b)
+                    if np is not None:
+                        if typ==3:v=np.frombuffer(b,dtype='<f4' if bits==32 else '<f8').astype(np.float64)
+                        elif bits==24:
+                            u=np.frombuffer(b,dtype=np.uint8).reshape(-1,3).astype(np.int32)
+                            n=u[:,0]|(u[:,1]<<8)|(u[:,2]<<16)
+                            v=((n^0x800000)-0x800000).astype(np.float64)/8388608
+                        elif bits==8:v=(np.frombuffer(b,dtype=np.uint8).astype(np.float64)-128)/128
+                        else:v=np.frombuffer(b,dtype='<i2' if bits==16 else '<i4').astype(np.float64)/(1<<(bits-1))
+                        bad=~np.isfinite(v);invalid+=int(np.count_nonzero(bad));v[bad]=0
+                        av=np.abs(v)
+                        peak=max(peak,float(np.max(av)));total+=float(np.sum(v*v))
+                        nonzero+=int(np.count_nonzero(av>min_peak));clipped+=int(np.count_nonzero(av>=.999))
+                        bins=(count+np.arange(len(v),dtype=np.int64))//(channels*rate)
+                        starts=np.r_[0,np.flatnonzero(np.diff(bins))+1]
+                        maxima=np.maximum.reduceat(av,starts)
+                        for i,value in zip(bins[starts],maxima):
+                            sec=int(i);seconds_bins[sec]=max(seconds_bins.get(sec,0),float(value))
+                        count+=len(v)
+                        continue
                     for i in range(0,len(b),width):
                         if typ==3:v=struct.unpack("<f" if bits==32 else "<d",b[i:i+width])[0]
                         elif bits==8:v=(b[i]-128)/128

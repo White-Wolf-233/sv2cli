@@ -22,6 +22,8 @@ Each output has a manifest with numerical audio checks. Silence, no samples, sho
 
 `coverage.json` records the latest pass's expected and missing activity windows. A nonzero but incomplete render reports `incomplete_audio` and retains diagnostic `incomplete-audio.npy`; it is never copied to the requested final output.
 
+Long WAV validation uses bounded vectorized chunks when NumPy is available (as it is for native renders). The dependency-free path remains available with the same format, silence, duration, nonfinite-sample and clipping checks.
+
 The parent terminates only its owned render worker on timeout or cancellation. It does not terminate an already-open Studio or delete Dreamtonics caches. A native plugin crash becomes a backend error with the retained log.
 
 If rendering fails, inspect `worker.log`, check activation in Studio, try a short project with the same bank, and increase warmup/attempts if inference is slow. Unknown plugin-state layouts fail with `unsupported_plugin_state`; do not force arbitrary bytes into a new plugin version.

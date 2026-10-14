@@ -10,6 +10,33 @@ from sv2cli.convert import midi_export,midi_import,csv_export,csv_import
 from sv2cli.project import Project
 from sv2cli.errors import SVError
 
+@pytest.mark.parametrize('typ,bits',[(1,8),(1,16),(1,24),(1,32),(3,32),(3,64)])
+def test_vector_validation_matches_dependency_free_path_across_second_boundaries(tmp_path,monkeypatch,typ,bits):
+    np=pytest.importorskip('numpy')
+    from sv2cli import audio
+    rate=12000;channels=2
+    values=np.zeros(rate*channels*3,dtype=np.float64)
+    values[:channels*rate]=.25
+    values[channels*rate*2:]=-.75
+    values[-2]=1;values[-1]=-1
+    if typ==3:
+        values[channels*rate+1]=float('nan');values[channels*rate+2]=float('inf')
+        payload=values.astype('<f4' if bits==32 else '<f8').tobytes()
+    elif bits==8:payload=np.clip(values*128+128,0,255).astype(np.uint8).tobytes()
+    else:
+        scale=1<<(bits-1);ints=np.clip(values*scale,-scale,scale-1).astype(np.int64)
+        payload=b''.join(int(v).to_bytes(bits//8,'little',signed=True) for v in ints)
+    align=channels*(bits//8)
+    fmt=struct.pack('<HHIIHH',typ,channels,rate,rate*align,align,bits)
+    body=b'fmt '+struct.pack('<I',len(fmt))+fmt+b'data'+struct.pack('<I',len(payload))+payload
+    path=tmp_path/'formats.wav';path.write_bytes(b'RIFF'+struct.pack('<I',len(body)+4)+b'WAVE'+body)
+    fast=audio.check(path)
+    monkeypatch.setattr(audio,'_numpy',lambda:None)
+    slow=audio.check(path)
+    assert fast['rms']==pytest.approx(slow.pop('rms'),rel=1e-12)
+    fast.pop('rms')
+    assert fast==slow
+
 def test_empty_and_silent_audio_fail(tmp_path):
     for name,frames in [("empty",b""),("silent",b"\0"*400)]:
         p=tmp_path/(name+".wav")
