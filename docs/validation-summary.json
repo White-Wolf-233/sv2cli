@@ -1,6 +1,6 @@
 {
   "date": "2026-10-14",
-  "coreTests": {"passed":75,"environment":"Windows 11, Python 3.12","crossPlatformCIMatrix":"Windows/macOS/Linux x Python 3.10/3.12/3.13","crossPlatformCI":"all nine core jobs and package job passed"},
+  "coreTests": {"passed":76,"environment":"Windows 11, Python 3.12","crossPlatformCIMatrix":"Windows/macOS/Linux x Python 3.10/3.12/3.13","crossPlatformCI":"all nine core jobs and package job passed"},
   "nativeRender": {
     "host":"DawDreamer 0.9.0",
     "plugin":"Synthesizer V Studio 2 Plugin 2.2.1",

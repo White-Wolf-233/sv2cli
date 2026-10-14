@@ -12,6 +12,21 @@ from .io import read_json, write_json, write_new
 
 METHODS={"host.info","project.summary","notes.list","computed.phonemes","computed.pitch","playback.status","playback.play","playback.stop","playback.pause","playback.seek","retake.generate","retake.activate"}
 
+def publish(path,value):
+    temporary=path.with_name(path.name+"."+uuid.uuid4().hex+".tmp")
+    write_json(temporary,value)
+    os.replace(temporary,path)
+
+def cleanup_file(path):
+    # Windows readers/antivirus can briefly retain a file handle after a valid
+    # response arrives. Cleanup must not mask the operation's actual outcome.
+    for attempt in range(5):
+        try:
+            path.unlink(missing_ok=True);return True
+        except PermissionError:
+            if attempt<4:time.sleep(.025*(attempt+1))
+    return False
+
 def mailbox_path(root=None,session="default"):
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}",session):raise SVError("Session must be 1-64 letters, digits, _ or -")
     return Path(root or os.environ.get("SV2CLI_MAILBOX") or config_path().parent/"mailbox").expanduser().resolve()/session
@@ -48,7 +63,7 @@ def call(method,args,mailbox=None,session="default",timeout=10):
         if req.exists():raise SVError("Pending request exists. Inspect the session before submitting another request.","session_busy")
         arguments=dict(args)
         expected=arguments.pop("expectedProject",None)
-        write_json(req,{"id":request_id,"method":method,"args":arguments,"expiresAt":time.time()+timeout,"expectedProject":expected})
+        publish(req,{"id":request_id,"method":method,"args":arguments,"expiresAt":time.time()+timeout,"expectedProject":expected})
         deadline=time.monotonic()+timeout
         while time.monotonic()<deadline:
             if response.exists():
@@ -61,7 +76,7 @@ def call(method,args,mailbox=None,session="default",timeout=10):
     finally:
         if req.exists():
             try:
-                if read_json(req).get("id")==request_id:req.unlink()
+                if read_json(req).get("id")==request_id:cleanup_file(req)
             except SVError:pass
-        if response.exists():response.unlink()
+        if response.exists():cleanup_file(response)
         lock.rmdir()

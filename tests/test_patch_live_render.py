@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from sv2cli.edit import apply
 from sv2cli.io import write_json
-from sv2cli.live import call,install
+from sv2cli.live import call,install,publish,cleanup_file
 from sv2cli.render import render
 from sv2cli.errors import SVError
 
@@ -27,7 +27,7 @@ def test_live_mailbox_response_and_lock(tmp_path):
         deadline=time.monotonic()+5
         while not req.exists() and time.monotonic()<deadline:time.sleep(.01)
         time.sleep(.05);r=json.loads(req.read_text())
-        write_json(box/f"response-{r['id']}.json",{"id":r["id"],"ok":True,"result":{"pong":True}})
+        publish(box/f"response-{r['id']}.json",{"id":r["id"],"ok":True,"result":{"pong":True}})
     t=threading.Thread(target=host);t.start()
     result=call("host.info",{},tmp_path,timeout=2);t.join()
     assert result["result"]["pong"]
@@ -36,6 +36,16 @@ def test_live_mailbox_response_and_lock(tmp_path):
 def test_live_timeout_does_not_leave_request(tmp_path):
     with pytest.raises(SVError,match="timed out"):call("host.info",{},tmp_path,timeout=.1)
     assert not (tmp_path/"default/request.json").exists()
+
+def test_transient_windows_handle_lock_does_not_mask_result(tmp_path,monkeypatch):
+    path=tmp_path/"response.json";path.write_text("{}")
+    original=Path.unlink;attempts=[]
+    def temporarily_locked(self,*args,**kwargs):
+        attempts.append(1)
+        if len(attempts)==1:raise PermissionError("temporarily open in another thread")
+        return original(self,*args,**kwargs)
+    monkeypatch.setattr(Path,"unlink",temporarily_locked)
+    assert cleanup_file(path) and not path.exists() and len(attempts)==2
 
 def test_bridge_install_portable_and_idempotent(tmp_path):
     scripts=tmp_path/"中文 scripts";scripts.mkdir()
