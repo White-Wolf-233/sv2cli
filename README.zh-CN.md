@@ -7,6 +7,8 @@
 工程工具支持 Windows、macOS、Linux；原生渲染使用本机安装的 VST3 乐器插件，给插件提供播放时钟和消息循环。**不依赖截图识图、鼠标坐标或键盘自动操作。** 合成仍需要你自己的已授权插件和声库。
 
 ```sh
+git clone https://github.com/White-Wolf-233/sv2cli.git
+cd sv2cli
 python -m pip install ".[render,midi]"
 sv2cli doctor
 sv2cli inspect song.svp

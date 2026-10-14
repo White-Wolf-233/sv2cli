@@ -16,6 +16,8 @@ An independent three-note G2/B2/D3 probe rendered through the CLI as an 8-second
 
 The user's existing full ten-track project (3277 notes) passes structural validation; its source file is unchanged. Private song projects, audio and absolute machine paths are excluded from Git and release packages.
 
+An eight-track excerpt with 168 original notes and four choir members per track also rendered through the CLI. The 16.769-second stereo PCM24 result has peak 0.128647, RMS 0.0206412 and zero clipped samples. All 142 expected audible note windows were active in the accepted passes; one-second energy-envelope error was 0.000637. The loaded score was read back through the plugin state and matched the requested excerpt. This is a short excerpt, not proof of a completed full-song export or subjective reference match.
+
 Further native-render results are recorded in `validation-summary.json`. macOS native plugin rendering and in-editor Lua live integration remain unverified here. Lua syntax/dispatch and mailbox behavior use explicit mocks; a command-adapter test uses a synthetic sine generator and is not voice synthesis.
 
 No subjective audition or claim of matching a reference recording is made by these numerical checks.

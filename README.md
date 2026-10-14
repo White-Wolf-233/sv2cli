@@ -7,6 +7,8 @@ A reusable CLI for **Synthesizer V Studio 2** projects: inspect and repair SVP f
 Project tools are dependency-free and work on Windows, macOS, and Linux. The native rendering backend uses a DAW host and an application event loop—**no screenshot recognition, mouse coordinates, or keyboard automation**. A licensed editor/plugin and activated voice are still required to synthesize audio.
 
 ```sh
+git clone https://github.com/White-Wolf-233/sv2cli.git
+cd sv2cli
 python -m pip install ".[render,midi]"
 sv2cli doctor
 sv2cli inspect song.svp
@@ -51,7 +53,7 @@ sv2cli batch examples/batch.json
 sv2cli capabilities
 ```
 
-Native renders use isolated workers, PCM16/24, timeout/cancellation, expected-note activity checks and energy-envelope convergence. Silence, empty WAVs, incomplete duration, missing activity, invalid plugin state or excessive clipping fail instead of becoming a successful result. Each output has a JSON manifest; worker logs and intermediate files remain in `.sv2cli-jobs` for diagnosis. Stem filenames are numbered (`01.wav`), with original track names in the manifest.
+Native renders use isolated workers, PCM16/24, timeout/cancellation, expected-note activity checks and energy-envelope convergence. The plugin's loaded score is read back and verified before rendering. Silence, empty WAVs, incomplete duration, missing activity, invalid plugin state or excessive clipping fail instead of becoming a successful result. Each output has a JSON manifest; worker logs and intermediate files remain in `.sv2cli-jobs` for diagnosis. Stem filenames are numbered (`01.wav`), with original track names in the manifest.
 
 ## Environments and live API
 

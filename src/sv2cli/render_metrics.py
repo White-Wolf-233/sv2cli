@@ -1,7 +1,10 @@
 """Synthesis readiness based on energy, not nondeterministic sample phase."""
 def envelope(audio,sample_rate):
     import numpy as np
-    hop=max(1,round(sample_rate*.25))
+    # Choir phase beating can vary within a note while its synthesis is fully
+    # ready. One-second energy is a steadier readiness measure; expected-note
+    # activity windows independently catch shorter silent gaps.
+    hop=max(1,round(sample_rate))
     mono_energy=np.mean(audio.astype(np.float64)**2,axis=0)
     return np.array([np.sqrt(np.mean(mono_energy[i:i+hop])) for i in range(0,len(mono_energy),hop)])
 

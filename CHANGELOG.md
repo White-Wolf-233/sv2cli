@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — 2026-10-13
+## 0.1.0 — 2026-10-14
 
 - Portable SVP inspection, conservative format repairs, new projects and score-aware diffs.
 - Transactional recipes for voices/languages/dictionaries, notes, groups, tracks, mixer/effects, tempo/meters, automation, pitch controls and existing Retakes.

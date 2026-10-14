@@ -1,5 +1,6 @@
-include README.zh-CN.md THIRD_PARTY_NOTICES.md
-recursive-include docs *.md
+include README.zh-CN.md THIRD_PARTY_NOTICES.md CHANGELOG.md
+recursive-include docs *.md *.json
 recursive-include examples *.json
 recursive-include tests *.py
+recursive-include scripts *.py
 recursive-include src/sv2cli/assets *.lua *.LICENSE
