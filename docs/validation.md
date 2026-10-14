@@ -20,4 +20,6 @@ An eight-track excerpt with 168 original notes and four choir members per track 
 
 Further native-render results are recorded in `validation-summary.json`. macOS native plugin rendering and in-editor Lua live integration remain unverified here. Lua syntax/dispatch and mailbox behavior use explicit mocks; a command-adapter test uses a synthetic sine generator and is not voice synthesis.
 
+The explicit singer-switch pipeline was also exercised with the installed Teto bank: Mandarin/xsampa overrides and score identity were retained while Gender changed. The numbered mono PCM24 stem rendered successfully (8 seconds, peak 0.127554, RMS 0.0199625, no clipping). Median YIN-style F0 estimates for MIDI 43/47/50 were 97.351/123.184/146.756 Hz, consistent with G2/B2/D3 rather than octave-raised notes. Switching to a different installed singer remains untested because this machine only supplies this bank.
+
 No subjective audition or claim of matching a reference recording is made by these numerical checks.

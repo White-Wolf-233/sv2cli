@@ -1,12 +1,13 @@
 {
   "date": "2026-10-14",
-  "coreTests": {"passed":73,"environment":"Windows 11, Python 3.12","crossPlatformCIMatrix":"Windows/macOS/Linux x Python 3.10/3.12/3.13"},
+  "coreTests": {"passed":75,"environment":"Windows 11, Python 3.12","crossPlatformCIMatrix":"Windows/macOS/Linux x Python 3.10/3.12/3.13","crossPlatformCI":"all nine core jobs and package job passed"},
   "nativeRender": {
     "host":"DawDreamer 0.9.0",
     "plugin":"Synthesizer V Studio 2 Plugin 2.2.1",
     "voice":"Kasane Teto AI 2",
     "threeNoteProbe":{"verified":true,"durationSeconds":8,"channels":2,"bitDepth":16,"peak":0.128570556640625,"rms":0.01993484910129523,"clippedRatio":0},
     "eightTrackExcerpt":{"verified":true,"tracks":8,"notes":168,"choirMembersPerTrack":4,"loadedScoreVerified":true,"durationSeconds":16.76922902494331,"channels":2,"bitDepth":24,"peak":0.12864696979522705,"rms":0.020641234198111574,"clippedRatio":0,"expectedActivityWindows":142,"missingActivityWindows":0,"energyEnvelopeError":0.0006372787388527147},
+    "singerSwitchAndMonoStem":{"verified":true,"voice":"same installed Teto AI 2 bank, explicit database reassignment and parameter update","scoreAndTimingIdentical":true,"mandarinPhonesetPreserved":true,"durationSeconds":8,"channels":1,"bitDepth":24,"peak":0.12755370140075684,"rms":0.019962476429943168,"clippedRatio":0,"midiPitches":[43,47,50],"estimatedF0Hz":[97.351,123.184,146.756],"octaveShiftDetected":false},
     "macOS":{"verified":false},
     "linuxNativeSV2":{"supported":false}
   },
