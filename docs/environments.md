@@ -26,3 +26,5 @@ sv2cli --profile adapter render song.svp -o output.wav --backend command
 `render_command` is an argument array passed directly to `subprocess`, never to a shell. Placeholders are `{project}`, `{output}`, `{duration}` and `{job}`. The adapter must write the requested WAV, return only after completion and exit nonzero on failure. The CLI independently validates its output. `{job}` points to a JSON file with format/length settings. Use a wrapper executable for remote/WSL/container adapters; there is no automatic path translation or claim that licenses travel across environments.
 
 JSON output is emitted to stdout. Progress/errors go to stderr; worker logs retain native messages. Exit status 0 = success, 2 = validation/operation error, 130 = cancellation. `doctor` detects prerequisites but does not claim a render succeeded.
+
+Batch tasks inherit the outer `--profile` unless a task explicitly supplies one. With `--keep-going`, both operation failures and invalid task inputs are recorded per job. Paths remain relative to the caller's working directory, not the batch manifest directory.

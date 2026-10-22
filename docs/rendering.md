@@ -20,6 +20,12 @@ Async synthesis is warmed up, then rendered repeatedly. Each pass must have nonz
 
 Each output has a manifest with numerical audio checks. Silence, no samples, short files, non-finite data and excessive clipping cause a failure before the final filename is written. Worker logs and project copies are kept under `.sv2cli-jobs/<job-id>/`; they can contain project lyrics and local paths and should not be published accidentally.
 
+The manifest is checkpointed before work and after each successful track, including `running`, `failed`, `cancelled` and `complete` states. Repeat the same command with `--resume` to reuse completed files after SHA-256, format and audio checks. The full project (including voice/tuning/mixer), CLI version, backend configuration and render settings must match; a score fingerprint alone is not a cache key. Externally edited outputs are not overwritten on resume. `--force` explicitly starts fresh instead; do not combine it with `--resume`. If a voice installation changes externally without changing its project identity, start fresh explicitly.
+
+Each checkpoint emits a JSON `render_progress` event to stderr with completed/total tasks, active track names and errors. `sv2cli job-status stems` (or a WAV/manifest path) reads compact persistent status, including reused/skipped/failed work. Progress reports task counts, not an invented time estimate. The companion skill uses these signals in a measured edit/render/check/rollback feedback loop and incorporates user corrections into task-local acceptance criteria.
+
+Stem jobs skip empty, muted and render-disabled tracks and report them in `skipped`. A failed job can leave verified successful WAVs with a failed manifest; they are partial output, not a completed delivery. Progress checkpoints make these files resumable.
+
 `coverage.json` records the latest pass's expected and missing activity windows. A nonzero but incomplete render reports `incomplete_audio` and retains diagnostic `incomplete-audio.npy`; it is never copied to the requested final output.
 
 Long WAV validation uses bounded vectorized chunks when NumPy is available (as it is for native renders). The dependency-free path remains available with the same format, silence, duration, nonfinite-sample and clipping checks.

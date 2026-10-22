@@ -8,20 +8,38 @@ from .project import QUARTER, PARAMETERS, VOICE_RANGES, empty_group, empty_ref, 
 SCORE_OPS = {"notes.replace", "notes.update", "notes.transpose", "notes.shift", "track.add", "track.remove", "track.clone", "tempo.set", "meter.set", "group.shift", "group.transpose", "group.remove", "lyrics.set", "phonemes.set"}
 VOICE_KEYS = set(VOICE_RANGES)|{"vocalModeInherited", "vocalModePreset", "vocalModeParams", "tF0VbrStart", "fF0Vbr", "dF0Vbr", "pF0Vbr", "tF0VbrLeft", "tF0VbrRight", "paramConsonantStrength", "paramMouthOpening", "choirPitchDeviation", "choirTimingDeviation", "choirLoudnessDeviation"}
 
-def _notes(project, selectors, groups=None):
-    project.isolate_groups(selectors)
-    seen = set()
+def _notes(project, selectors, groups=None, references=None):
+    # Resolve selectors before cloning. A library group can have several
+    # references at different absolute times, including in the same track.
+    uses = {}
+    for _, track in project.tracks():
+        for ref, group in project.references(track):
+            uses[group['uuid']] = uses.get(group['uuid'], 0) + 1
+    matches = []
+    origins=getattr(project,'_group_origins',{})
     for _, t in project.tracks(selectors):
         for ref, group in project.references(t):
-            if groups and group.get("uuid") not in groups and group.get("name") not in groups:
+            if groups and group.get("uuid") not in groups and origins.get(group.get('uuid')) not in groups and group.get("name") not in groups:
                 continue
-            if group["uuid"] not in seen:
-                seen.add(group["uuid"])
-                yield ref, group
+            if references and ref.get('uuid') not in references:
+                continue
+            matches.append((ref, group))
+    if (groups or references) and not matches:
+        raise SVError('No group/reference matched the explicit selectors', 'empty_selection')
+    for ref, group in matches:
+        if uses[group['uuid']] > 1:
+            old=group['uuid']
+            group = deepcopy(group)
+            group['uuid'] = guid()
+            origins[group['uuid']]=origins.get(old,old)
+            project._group_origins=origins
+            project.data.setdefault('library', []).append(group)
+            ref['groupID'] = group['uuid']
+        yield ref, group
 
 def _new_note(row, offset=0, pitch_offset=0):
     n = deepcopy(row)
-    for k in ["track", "trackName", "group", "groupID", "note", "muted"]:
+    for k in ["track", "trackName", "group", "groupID", "referenceID", "note", "muted"]:
         n.pop(k, None)
     n["onset"] = integer(n["onset"], "onset")-offset
     n["duration"] = integer(n["duration"], "duration")
@@ -60,11 +78,22 @@ def _set_voice(project, op):
             ref["timestampLRSR"] = 0
 
 def apply(project, operations, allow_score_changes=False, score_lock=False):
-    if not isinstance(operations, list) or not all(isinstance(o,dict) for o in operations):
-        raise SVError("Recipe must be an array of operation objects")
+    from .recipe import validate_recipe
+    from .timing import position
+    if isinstance(operations,list) and not allow_score_changes:
+        for op in operations:
+            if isinstance(op,dict) and op.get('op') in SCORE_OPS:
+                raise SVError(f"{op['op']} changes the score; pass --allow-score-changes explicitly",'score_locked')
+    validate_recipe(operations)
     result = project.copy()
+    result.edit_report = []
     before = project.score_fingerprint()
     for op in operations:
+        op = deepcopy(op)
+        for field in ('start', 'end'):
+            if field in op: op[field] = position(result, op[field])
+        if 'start' in op and 'end' in op and op['start'] >= op['end']:
+            raise SVError('start must be before end', 'invalid_recipe')
         name = op.get("op")
         if name in SCORE_OPS and not allow_score_changes:
             raise SVError(f"{name} changes the score; pass --allow-score-changes explicitly", "score_locked")
@@ -171,7 +200,7 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
             t["mainRef"]["blickOffset"]=0;t["mainRef"]["pitchOffset"]=0
         elif name in {"notes.update", "notes.transpose", "notes.shift", "lyrics.set", "phonemes.set"}:
             notes=[]
-            for ref,g in _notes(result,selectors,op.get("groups")):
+            for ref,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 for n in g.get("notes",[]):
                     if op.get("uuids") and n.get("uuid") not in op["uuids"]:
                         continue
@@ -180,6 +209,9 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
                     if "end" in op and n["onset"]+ref.get("blickOffset",0)>=op["end"]:
                         continue
                     notes.append(n)
+            if not notes:
+                raise SVError('No notes matched the edit', 'empty_selection')
+            result.edit_report.append({'op':name, 'matchedNotes':len(notes)})
             if name in {"lyrics.set", "phonemes.set"}:
                 field="lyrics" if name=="lyrics.set" else "phonemes"
                 words=op.get("values")
@@ -203,8 +235,10 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
                             n.setdefault("attributes",{}).update(values.pop("attributes"))
                         n.update(values)
         elif name in {"group.shift", "group.transpose", "group.remove"}:
+            matched = 0
             for _,t in result.tracks(selectors):
-                refs=[r for r,g in result.references(t) if not op.get("groups") or g.get("uuid") in op["groups"] or g.get("name") in op["groups"]]
+                refs=[r for r,g in result.references(t) if (not op.get("groups") or g.get("uuid") in op["groups"] or g.get("name") in op["groups"]) and (not op.get('references') or r.get('uuid') in op['references'])]
+                matched += len(refs)
                 if name=="group.remove":
                     if not op.get("groups"):raise SVError("group.remove requires groups")
                     t["groups"]=[r for r in t.get("groups",[]) if r not in refs]
@@ -212,6 +246,7 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
                     for r in refs:
                         if name=="group.shift":r["blickOffset"]+=integer(op["blick"],"blick")
                         else:r["pitchOffset"]=r.get("pitchOffset",0)+integer(op["semitones"],"semitones")
+            if not matched:raise SVError('No references matched the edit', 'empty_selection')
         elif name == "automation.set":
             param=op.get("parameter")
             if param not in PARAMETERS:raise SVError(f"Unknown automation parameter {param}")
@@ -222,16 +257,16 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
                 integer(pair[0],"point position");finite(pair[1],"point value")
             if len({p[0] for p in points})!=len(points):raise SVError("Duplicate automation position")
             if op.get("mode","cubic") not in {"cubic","linear","cosine"}:raise SVError("Unknown interpolation mode")
-            for _,g in _notes(result,selectors,op.get("groups")):
+            for _,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 g.setdefault("parameters",{})[param]={"mode":op.get("mode","cubic"),"points":[v for pair in sorted(points) for v in pair]}
         elif name == "pitch.controls":
             controls=op.get("controls")
             if not isinstance(controls,list):raise SVError("controls must be an array")
-            for _,g in _notes(result,selectors,op.get("groups")):
+            for _,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 g["pitchControls"]=deepcopy(controls)
         elif name == "retake.activate":
             take_id=integer(op["id"],"take id")
-            for _,g in _notes(result,selectors,op.get("groups")):
+            for _,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 for n in g.get("notes",[]):
                     if op.get("uuids") and n.get("uuid") not in op["uuids"]:continue
                     takes=n.get("takes",{})

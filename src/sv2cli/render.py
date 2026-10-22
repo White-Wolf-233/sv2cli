@@ -6,11 +6,36 @@ import sys
 import tempfile
 import time
 import uuid
+import hashlib
 from .errors import SVError
 from .io import write_json, write_new, read_json
 from .project import Project
 from .config import profile
 from .audio import check
+
+def job_status(path):
+    path=Path(path).expanduser().resolve()
+    if path.is_dir():path=path/'manifest.json'
+    elif path.suffix.lower()!='.json':path=path.with_suffix(path.suffix+'.json')
+    manifest=read_json(path)
+    if not isinstance(manifest,dict) or not isinstance(manifest.get('tasks'),list):
+        raise SVError('Expected a checkpointed render manifest','invalid_manifest')
+    tasks=manifest['tasks'];complete=sum(t.get('status')=='complete' for t in tasks)
+    return {'jobId':manifest.get('jobId'),'status':manifest.get('status'),'completed':complete,'total':len(tasks),
+            'reused':sum(bool(t.get('reused')) for t in tasks),'skipped':manifest.get('skipped',[]),
+            'active':[t for t in tasks if t.get('status')=='running'],
+            'failed':[t for t in tasks if t.get('status') in {'failed','cancelled'}],
+            'error':manifest.get('error'),'manifest':str(path),'updatedAt':manifest.get('updatedAt'),
+            'nextAction':'inspect error and resume with matching parameters' if manifest.get('status') in {'failed','cancelled'} else None}
+
+def _checkpoint(path,manifest,force=True):
+    manifest['updatedAt']=time.time()
+    write_json(path,manifest,force=force)
+    tasks=manifest['tasks']
+    print(json.dumps({'event':'render_progress','jobId':manifest['jobId'],'status':manifest['status'],
+                      'completed':sum(t.get('status')=='complete' for t in tasks),'total':len(tasks),
+                      'activeTracks':[t['trackName'] for t in tasks if t.get('status')=='running'],
+                      'error':manifest.get('error')},ensure_ascii=False),file=sys.stderr,flush=True)
 
 def _worker(command, timeout, log):
     flags=subprocess.CREATE_NO_WINDOW if sys.platform=="win32" else 0
@@ -40,7 +65,7 @@ def _worker(command, timeout, log):
         text=log.read_text("utf8",errors="replace")[-4000:]
         raise SVError(f"Render backend exited {status}. {text}", "render_failed")
 
-def render(source, output, profile_name="default", backend="vst3", tracks=None, stems=False, timeout=1800, warmup=15, attempts=4, tail=2, force=False, channels=2, bit_depth=16, sample_rate=44100, single_pass=False):
+def render(source, output, profile_name="default", backend="vst3", tracks=None, stems=False, timeout=1800, warmup=15, attempts=4, tail=2, force=False, channels=2, bit_depth=16, sample_rate=44100, single_pass=False, resume=False):
     original=Project.load(source)
     valid=original.validate()
     if not valid["valid"]:raise SVError(f"Project must pass validation before rendering: {valid['issues'][:4]}","invalid_project")
@@ -54,24 +79,84 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
     if timeout<=0 or warmup<0 or tail<0 or attempts<1:raise SVError("Invalid render limits")
     selected=original.tracks(tracks)
     if not selected:raise SVError("No tracks selected")
+    if resume and force:raise SVError('Use --resume or --force, not both')
     tasks=[]
+    skipped=[]
     if stems:
         output.mkdir(parents=True,exist_ok=True)
         for i,t in selected:
+            reason='muted' if t.get('mixer',{}).get('mute') else 'render_disabled' if not t.get('renderEnabled',True) else 'empty' if not any(not n['muted'] for n in original.notes([f'#{i+1}'])) else None
+            if reason:
+                skipped.append({'track':i+1,'name':t.get('name',''),'reason':reason})
+                continue
             # Numeric names are deterministic, portable and immune to slashes
             # or duplicate track names. The manifest maps them back to names.
             tasks.append(([i],output/f"{i+1:02d}.wav",t.get("name","")))
     else:tasks.append(([i for i,_ in selected],output,"MixDown"))
     manifest_path=output/"manifest.json" if stems else output.with_suffix(output.suffix+".json")
-    if manifest_path.exists() and not force:raise SVError(f"Manifest exists: {manifest_path}","output_exists")
+    if manifest_path.resolve()==Path(source).resolve():raise SVError('Manifest cannot replace the source project')
+    if not tasks:raise SVError('No audible tracks to render; empty/muted/disabled stems were skipped','empty_selection')
+    plugin_identity=None
+    if cfg.get('plugin') and Path(cfg['plugin']).exists():
+        stat=Path(cfg['plugin']).stat()
+        plugin_identity={'size':stat.st_size,'modifiedNs':stat.st_mtime_ns}
+    from . import __version__
+    request={'version':__version__,'project':original.data,'config':cfg,'pluginIdentity':plugin_identity,
+             'backend':backend,'tracks':[i for i,_ in selected],'stems':stems,
+             'sampleRate':sample_rate,'channels':channels,'bitDepth':bit_depth,
+             'tail':tail,'warmup':warmup,'attempts':attempts,'singlePass':single_pass}
+    request_key=hashlib.sha256(json.dumps(request,sort_keys=True,allow_nan=False).encode()).hexdigest()
+    prior=read_json(manifest_path) if resume and manifest_path.exists() else None
+    if resume and (prior is None or prior.get('requestFingerprint')!=request_key):
+        raise SVError('No matching checkpoint: source/settings/backend changed, or manifest is missing. Use a new output or --force.','resume_mismatch')
+    if manifest_path.exists() and not (force or resume):raise SVError(f"Manifest exists: {manifest_path}","output_exists")
     for _,dest,_ in tasks:
-        if dest.exists() and not force:raise SVError(f"Output exists: {dest}","output_exists")
+        if dest.exists() and not (force or resume):raise SVError(f"Output exists: {dest}","output_exists")
         if dest.resolve()==Path(source).resolve():raise SVError("Audio output cannot replace the source project")
     job_id=uuid.uuid4().hex
     work_root=output.parent/".sv2cli-jobs"/job_id
     work_root.mkdir(parents=True,exist_ok=False)
     reports=[]
+    prior_audio=(prior.get('checkpointAudio') or prior.get('audio',[])) if prior else []
+    manifest={"jobId":job_id,"backend":backend,"source":str(Path(source).resolve()),"sourceScoreFingerprint":original.score_fingerprint(),
+              'requestFingerprint':request_key,'status':'running','audio':reports,'checkpointAudio':list(prior_audio),'tasks':[], 'skipped':skipped,
+              'stems':stems,'loadedScoreVerified':False,'expectedActivityChecked':False,
+              'convergenceRequired':backend=='vst3' and not single_pass,'warmupSeconds':warmup,'attemptLimit':attempts,
+              'work':str(work_root),'subjectiveListeningVerified':False}
+    for indices,dest,name in tasks:manifest['tasks'].append({'tracks':[i+1 for i in indices],'path':str(dest),'trackName':name,'status':'pending'})
+    _checkpoint(manifest_path,manifest,force=force or resume)
+    def digest(path):
+        h=hashlib.sha256()
+        with Path(path).open('rb') as f:
+            for chunk in iter(lambda:f.read(1024*1024),b''):h.update(chunk)
+        return h.hexdigest()
+    try:
+        return _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,cfg,backend,
+                      timeout,warmup,attempts,tail,force,channels,bit_depth,sample_rate,single_pass,tracks,stems,digest)
+    except (Exception,KeyboardInterrupt) as error:
+        manifest['status']='cancelled' if isinstance(error,KeyboardInterrupt) else 'failed'
+        for task in manifest['tasks']:
+            if task['status']=='running':task['status']=manifest['status']
+        manifest['error']={'code':getattr(error,'code','render_failed'),'message':str(error)}
+        _checkpoint(manifest_path,manifest)
+        raise
+
+def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,cfg,backend,
+           timeout,warmup,attempts,tail,force,channels,bit_depth,sample_rate,single_pass,tracks,stems,digest):
     for indices,dest,name in tasks:
+        task=manifest['tasks'][len(reports)]
+        old=next((r for r in (prior.get('checkpointAudio') or prior.get('audio',[])) if r.get('path')==str(dest)),None) if prior else None
+        if old and dest.exists() and old.get('sha256')==digest(dest):
+            report=check(dest,expected_seconds=old['durationSeconds'])
+            if report['valid'] and (report['sampleRate'],report['channels'],report['bitDepth'])==(sample_rate,channels,bit_depth):
+                reports.append({**old,'reused':True});task['status']='complete';task['reused']=True
+                _checkpoint(manifest_path,manifest)
+                continue
+        # Never clobber an unrelated or externally modified file on resume.
+        if dest.exists() and not force:
+            raise SVError(f'Existing output cannot be verified for resume: {dest}. Use --force or move it aside.','resume_output_conflict')
+        task['status']='running'
+        _checkpoint(manifest_path,manifest)
         work=work_root/f"task-{len(reports)+1}";work.mkdir()
         project=original.copy()
         project.data["tracks"]=[t for i,t in project.tracks() if i in indices]
@@ -106,8 +191,11 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
         if (report["sampleRate"],report["channels"],report["bitDepth"])!=(sample_rate,channels,bit_depth):
             raise SVError(f"Backend output format does not match the requested {sample_rate} Hz / {channels} channel(s) / PCM{bit_depth}; log: {log}","format_mismatch")
         write_new(dest,audio.read_bytes(),force)
-        report.update(path=str(dest),trackName=name,log=str(log))
+        report.update(path=str(dest),trackName=name,log=str(log),sha256=digest(dest),reused=False)
         reports.append(report)
-    manifest={"jobId":job_id,"backend":backend,"source":str(Path(source).resolve()),"sourceScoreFingerprint":original.score_fingerprint(),"audio":reports,"stems":stems,"loadedScoreVerified":backend=="vst3","expectedActivityChecked":backend=="vst3","convergenceRequired":backend=="vst3" and not single_pass,"warmupSeconds":warmup,"attemptLimit":attempts,"work":str(work_root),"subjectiveListeningVerified":False}
-    write_json(manifest_path,manifest,force)
+        manifest['checkpointAudio']=[r for r in manifest['checkpointAudio'] if r.get('path')!=str(dest)]+[report]
+        task['status']='complete'
+        _checkpoint(manifest_path,manifest)
+    manifest.update(status='complete',loadedScoreVerified=backend=='vst3',expectedActivityChecked=backend=='vst3')
+    _checkpoint(manifest_path,manifest)
     return manifest

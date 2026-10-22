@@ -4,6 +4,8 @@
 
 为 Synthesizer V Studio 2 做的可复用命令行工具。检查和修复 SVP、切换声库、批量改发声参数和混音、导入导出 MIDI、渲染混音及分轨，都可以从终端运行。
 
+配套 [sv2cli-production skill](https://github.com/White-Wolf-233/sv2cli-skill) 放在独立仓库，覆盖实际发声时序、力度与主次、保谱编辑、覆盖保存和交付流程。
+
 工程工具支持 Windows、macOS、Linux；原生渲染使用本机安装的 VST3 乐器插件，给插件提供播放时钟和消息循环。**不依赖截图识图、鼠标坐标或键盘自动操作。** 合成仍需要你自己的已授权插件和声库。
 
 ```sh
@@ -47,7 +49,24 @@ sv2cli render song.svp --stems -o stems --bit-depth 24
 sv2cli capabilities
 ```
 
-所有写操作另存，默认不覆盖已有输出；即使指定 `--force`，也不能覆盖输入 SVP。配方在副本上执行，失败不写结果。未知工程字段保留，共享的音符组采用复制后再修改，避免改一个声部牵连另一个。
+默认不覆盖已有输出。`edit`、`voice`、`mixer`、`repair` 支持 `--in-place` 直接覆盖原工程，或 `-o 原工程 --force`；自动创建带时间戳的原始字节备份，校验后原子替换。查询、转换与渲染输出仍不能覆盖输入。配方在副本执行，失败不写工程；未知原生字段保留，未知 recipe 字段报错，共享组按引用隔离。
+
+```sh
+sv2cli mixer song.svp --track "#1" --gain -3 --in-place --dry-run
+sv2cli mixer song.svp --track "#1" --gain -3 --in-place
+sv2cli time song.svp --at bar:53:1
+sv2cli groups song.svp --track "#1"
+sv2cli timing-check song.svp lead.wav --track "#1" -o timing.json
+sv2cli audio-shift song.svp lead.wav --track "#1" --seconds -0.24 -o corrected.wav
+sv2cli render song.svp --stems -o stems --bit-depth 24 --resume
+sv2cli job-status stems
+```
+
+时序分析需 `audio` extra（NumPy，render extra 已包含），使用独立分轨，报告实际活动、可测入声/收声的能量代理及未解决的连唱边界，不声称音素对齐。移位值须来自当前片段实测，负值提前、正值延后；工具拒绝裁掉非静音开头或使原本有声的窗口变空。小节/拍/秒数与覆盖规则见 [时序工作流](docs/timing.md)。
+
+分轨 manifest 在开始、逐轨完成、失败/取消时保存状态；`--resume` 校验配置和已完成文件后复用。默认跳过空轨、静音轨、禁用渲染的轨并说明原因。不要同时使用 resume 与 force。
+
+自动化运行会在 stderr 输出结构化的 `render_progress`，包含完成/总数、当前轨名与错误。`job-status` 可读取持久进度；配套 skill 还要求记录用户新反馈、比较修改前后证据，并在校验退化时回退。
 
 改音高、节奏、歌词、音素、速度和结构需要 `--allow-score-changes`。`--score-lock` 会核对这些字段是否保持一致；发声参数和音高曲线仍会影响实际演唱，不能把锁谱检查当成听感验证。
 

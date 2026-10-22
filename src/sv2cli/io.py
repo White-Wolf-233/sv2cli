@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import sys
+import time
 from .errors import SVError
 
 def configure_utf8():
@@ -51,3 +52,7 @@ def write_new(path, content, force=False):
 
 def write_json(path, value, force=False):
     return write_new(path, json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False)+"\n", force)
+
+def backup_file(path):
+    path=Path(path).expanduser().resolve()
+    return write_new(path.with_name(path.name+f'.{time.time_ns()}.bak'),path.read_bytes())

@@ -105,7 +105,7 @@ class Project:
             for gi, (ref, group) in enumerate(self.references(track)):
                 offset = ref.get("blickOffset", 0)
                 for ni, note in enumerate(group.get("notes", [])):
-                    rows.append({"track": ti+1, "trackName": track.get("name", ""), "group": gi, "groupID": group.get("uuid"), "note": ni, "uuid": note.get("uuid"), "onset": offset+note.get("onset", 0), "duration": note.get("duration", 0), "pitch": ref.get("pitchOffset", 0)+note.get("pitch", 0), "lyrics": note.get("lyrics", ""), "phonemes": note.get("phonemes", ""), "musicalType": note.get("musicalType", "singing"), "muted": ref.get("mute", False) or note.get("attributes", {}).get("muted", False)})
+                    rows.append({"track": ti+1, "trackName": track.get("name", ""), "group": gi, "groupID": group.get("uuid"), "referenceID":ref.get('uuid'), "note": ni, "uuid": note.get("uuid"), "onset": offset+note.get("onset", 0), "duration": note.get("duration", 0), "pitch": ref.get("pitchOffset", 0)+note.get("pitch", 0), "lyrics": note.get("lyrics", ""), "phonemes": note.get("phonemes", ""), "musicalType": note.get("musicalType", "singing"), "muted": ref.get("mute", False) or note.get("attributes", {}).get("muted", False)})
         return rows
 
     def score_fingerprint(self):
@@ -204,6 +204,14 @@ class Project:
                     continue
                 g = next(g for g in groups if g.get("uuid") == ref.get("groupID"))
                 ns = g.get("notes", [])
+                for key in ('blickOffset','pitchOffset'):
+                    check_num(ref.get(key,0),f'tracks[{ti}].refs[{ri}].{key}',whole=True)
+                if isinstance(ref.get('pitchOffset',0),(int,float)):
+                    for ni,n in enumerate(ns):
+                        if isinstance(n.get('pitch'),(int,float)):
+                            check_num(n['pitch']+ref.get('pitchOffset',0),f'tracks[{ti}].refs[{ri}].notes[{ni}].effectivePitch',0,127,whole=True)
+                if not isinstance(ref.get('blickOffset',0),(int,float)):
+                    continue
                 if ns and all(isinstance(n.get("onset"), (int,float)) and isinstance(n.get("duration"), (int,float)) for n in ns):
                     start = ref.get("blickOffset", 0)+min(n["onset"] for n in ns)
                     end = ref.get("blickOffset", 0)+max(n["onset"]+n["duration"] for n in ns)

@@ -1,5 +1,13 @@
 # Validation
 
+## 0.2.0 validation (2026-10-22)
+
+The Windows/Python 3.12 core suite now contains 96 passing tests. New regression checks exercise same-track/cross-track repeated references at different offsets, UUID selectors across multi-step recipes, effective pitch limits, MIDI selection, batch profile inheritance, source overwrite/backup/failed atomic replacement, bar/beat/seconds conversion, missing/late activity, audio shift regression/crop rejection, checkpoint failure/resume and modified-output conflict recovery. Cross-platform CI is separate from this local result.
+
+The current three-note Teto VST3 probe produced a real 5-second 44.1 kHz stereo PCM24 WAV (peak 0.1586995125, RMS 0.0282193177, zero clipped samples). Two render passes converged, all three activity windows were present, and the loaded score matched. The timing diagnostic measured an energy-entry proxy about 190 ms after the first written onset and explicitly left connected boundaries unresolved; this is not a phoneme alignment measurement. Injecting a known 100 ms delay into that real WAV and correcting it through `audio-shift` restored every original PCM sample exactly, with all note activity retained. No new subjective audition or full-song acceptance is claimed.
+
+The independent production skill passes its metadata validator and executes its packaged recipe, protected overwrite, musical-time and delayed-signal correction smoke. These checks do not establish model routing quality or subjective musical success.
+
 Validation separates project/transport checks from synthesis and listening.
 
 ## Automated core tests

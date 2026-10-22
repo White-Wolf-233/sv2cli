@@ -4,6 +4,8 @@
 
 A reusable CLI for **Synthesizer V Studio 2** projects: inspect and repair SVP files, switch singers without leaving stale group overrides, edit voice/mixer/tuning parameters, batch jobs, and render through the installed VST3 instrument plugin.
 
+For agent-assisted production, use the separate [sv2cli-production skill](https://github.com/White-Wolf-233/sv2cli-skill). It covers measured timing, dynamics, score protection, overwrite choices and delivery.
+
 Project tools are dependency-free and work on Windows, macOS, and Linux. The native rendering backend uses a DAW host and an application event loop—**no screenshot recognition, mouse coordinates, or keyboard automation**. A licensed editor/plugin and activated voice are still required to synthesize audio.
 
 ```sh
@@ -34,7 +36,19 @@ sv2cli diff song.svp song-balanced.svp --summary
 
 Switching singers preserves existing cross-language pronunciation overrides. Mandarin language override also sets the matching `xsampa` phoneset; Japanese uses `romaji`. `--override-phoneset` explicitly selects the override encoding for other language/bank combinations. Lyrics and explicit phonemes stay unchanged.
 
-Every write needs a new output filename. Existing outputs fail unless `--force` is supplied, and source SVP files cannot be overwritten even with `--force`. Unknown JSON fields are preserved.
+Existing outputs fail unless `--force` is supplied. `edit`, `voice`, `mixer` and `repair` also support **`--in-place`**, or `-o INPUT.svp --force`, to atomically overwrite the source SVP after saving a timestamped backup. Score-lock and validation still apply. Query/conversion/render outputs cannot replace their inputs. Unknown native JSON fields are preserved; unknown recipe operation fields are rejected.
+
+```sh
+sv2cli mixer song.svp --track "#1" --gain -3 --in-place --dry-run
+sv2cli mixer song.svp --track "#1" --gain -3 --in-place
+sv2cli time song.svp --at bar:53:1
+sv2cli groups song.svp --track "#1"
+sv2cli timing-check song.svp lead.wav --track "#1" -o timing.json
+sv2cli audio-shift song.svp lead.wav --track "#1" --seconds -0.24 -o lead-aligned.wav
+sv2cli job-status stems
+```
+
+The last command applies an explicitly measured offset; negative advances audio, positive delays it. Timing checks use activity/energy proxies on an **isolated stem**, report unresolved legato boundaries, and never claim phoneme alignment. Unsafe leading crops and lost previously active note windows are rejected. See [timing and overwrite workflows](docs/timing.md). Timing tools need the `audio` extra (NumPy), also supplied by `render`.
 
 Apply a recipe atomically and enforce score identity:
 

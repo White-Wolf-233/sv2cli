@@ -69,8 +69,11 @@ def test_csv_roundtrip(project,tmp_path):
 
 def test_cli_source_protection(project,tmp_path,capsys):
     path=tmp_path/"p.svp";project.save(path);before=path.read_bytes()
-    assert main(["voice",str(path),"-o",str(path),"--force","--params",'{"paramGender":0.2}'])==2
+    assert main(["voice",str(path),"-o",str(path),"--params",'{"paramGender":0.2}'])==2
     assert path.read_bytes()==before
+    assert main(["voice",str(path),"-o",str(path),"--force","--params",'{"paramGender":0.2}'])==0
+    assert path.read_bytes()!=before
+    assert next(tmp_path.glob('p.svp.*.bak')).read_bytes()==before
     assert "source_protected" in capsys.readouterr().err
 
 @pytest.mark.parametrize("command",["notes","convert"])

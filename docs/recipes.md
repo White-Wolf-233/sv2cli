@@ -6,6 +6,8 @@ sv2cli edit input.svp --recipe recipe.json -o output.svp --score-lock
 
 A recipe is an array of objects. Each uses `op` and usually `tracks` (exact names or one-based `#N`). Omit `tracks` for all tracks. Unknown operations fail. The entire recipe runs on a copy; validation occurs before saving. Shared library groups are copied when editing only some of their users.
 
+Unknown operation-envelope fields and missing required fields are rejected (`track` is not an alias for `tracks`). Run `sv2cli recipe-schema` for required/optional fields. Note edits return matched-note counts and reject empty selections. Shared library references are isolated per instance before local edits; selectors resolve before new UUIDs are assigned. `references` accepts reference UUIDs from `groups`, allowing one occurrence of a repeated group to be selected explicitly.
+
 Score-changing operations need `--allow-score-changes`. `--score-lock` always takes precedence and compares note pitches/timing/text/type/mute, tempo, meter and track arrangement. Raw JSON Patch cannot bypass it.
 
 | Operation | Required / optional fields |
@@ -37,6 +39,8 @@ Score-changing operations need `--allow-score-changes`. `--score-lock` always ta
 | `json.patch` | `patch` RFC6902 array; add/remove/replace/copy/move/test |
 
 Timing is integer **blicks**, with `705600000` per quarter. Note onsets in `notes.replace` are absolute; `notes.update` values and automation points are group-local. Filtering by `start`/`end` uses absolute note onset. `notes` query uses interval overlap. Group index 0 in offline note rows represents the main group; library references follow it. The live API uses Studio's one-based reference indexing instead.
+
+`start`/`end` filters also accept `b:705600000`, `q:3/2`, `s:12.5`, or `bar:53:1`. The values written to note `onset`/`duration` remain integer group-local blicks. `bar` and `beat` are one-based; beats follow the current meter denominator. Use `time --at` to inspect a position before editing.
 
 Singer switching preserves existing nonempty cross-language/phoneset overrides unless `keepLanguageOverride` is false. `language.set` automatically pairs Mandarin with `xsampa` and Japanese with `romaji`; clearing the override clears its phoneset. For other languages supply the bank's matching `phoneset` explicitly when necessary. The high-level command exposes this as `--override-phoneset`. This is separate from `--phoneset`, which identifies the singer's native language encoding.
 
