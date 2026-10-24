@@ -71,6 +71,14 @@ sv2cli capabilities
 
 Native renders use isolated workers, PCM16/24, timeout/cancellation, expected-note activity checks and energy-envelope convergence. The plugin's loaded score is read back and verified before rendering. Silence, empty WAVs, incomplete duration, missing activity, invalid plugin state or excessive clipping fail instead of becoming a successful result. Each output has a JSON manifest; worker logs and intermediate files remain in `.sv2cli-jobs` for diagnosis. Stem filenames are numbered (`01.wav`), with original track names in the manifest.
 
+Native rendering also checks the **first actual isolated waveform entry** by
+default (30 ms tolerance). Multi-track jobs should use `--stems`; explicitly
+unchecked mixes need `--entry-policy report`. For a reviewed whole-recording
+offset, `--entry-policy align` measures and translates PCM without changing the
+score. Existing WAVs can use `wave-align`. Reports retain unresolved later
+entries and never certify all-note/phoneme alignment. See [waveform entry
+acceptance and correction](docs/wave-align.md).
+
 ## Environments and live API
 
 Named JSON profiles separate machine paths and custom render adapters:

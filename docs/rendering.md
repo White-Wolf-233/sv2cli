@@ -18,6 +18,15 @@ Only PCM16/24, mono/stereo main audio is written. Native `renderConfig` aspirati
 
 Async synthesis is warmed up, then rendered repeatedly. Each pass must have nonzero audio and activity inside expected audible note windows. Two passes need sufficiently similar **one-second RMS envelopes**. A raw-sample comparison would falsely reject valid synthesized noise/phase variation; short envelope windows also fluctuate with choir phase beating. Note activity windows independently check shorter silent gaps. These checks detect obvious incomplete/silent output, not every missing voice in a dense mix; stems are the better validation unit. `--single-pass` deliberately disables convergence and should be used only for diagnosis.
 
+Readiness does not establish actual entry timing. Native renders additionally
+default to `--entry-policy check`, rejecting an unresolved first isolated
+waveform entry or a deviation over `--entry-tolerance 0.03` seconds before the
+final output is accepted. Use `--stems` for multiple tracks. An explicitly
+unchecked mix requires `--entry-policy report`; a reviewed whole-recording
+offset can be corrected with `--entry-policy align`. Raw audio and timing
+evidence remain in the job directory. This verifies only a waveform energy
+landmark, not every note or phoneme. See [entry alignment](wave-align.md).
+
 Each output has a manifest with numerical audio checks. Silence, no samples, short files, non-finite data and excessive clipping cause a failure before the final filename is written. Worker logs and project copies are kept under `.sv2cli-jobs/<job-id>/`; they can contain project lyrics and local paths and should not be published accidentally.
 
 The manifest is checkpointed before work and after each successful track, including `running`, `failed`, `cancelled` and `complete` states. Repeat the same command with `--resume` to reuse completed files after SHA-256, format and audio checks. The full project (including voice/tuning/mixer), CLI version, backend configuration and render settings must match; a score fingerprint alone is not a cache key. Externally edited outputs are not overwritten on resume. `--force` explicitly starts fresh instead; do not combine it with `--resume`. If a voice installation changes externally without changing its project identity, start fresh explicitly.

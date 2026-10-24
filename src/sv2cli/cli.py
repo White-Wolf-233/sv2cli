@@ -41,9 +41,12 @@ def _parser():
     r=source("render");write(r);tracks(r);r.add_argument("--backend",choices=["vst3","command"],default="vst3");r.add_argument("--stems",action="store_true");r.add_argument("--timeout",type=float,default=1800);r.add_argument("--warmup",type=float,default=15);r.add_argument("--attempts",type=int,default=4);r.add_argument("--tail",type=float,default=2);r.add_argument("--channels",type=int,choices=[1,2],default=2);r.add_argument("--bit-depth",type=int,choices=[16,24],default=16);r.add_argument("--sample-rate",type=int,default=44100);r.add_argument("--single-pass",action="store_true")
     a=sub.add_parser("audio-check");a.add_argument("audio");a.add_argument("--expected-seconds",type=float)
     r.add_argument('--resume',action='store_true',help='Reuse verified completed renders from a matching manifest')
+    r.add_argument('--entry-policy',choices=['check','align','report'],help='Native default: check first isolated waveform entry; align explicitly translates the recording; report permits unchecked mixes')
+    r.add_argument('--entry-tolerance',type=float,default=.03,help='First waveform entry tolerance in seconds (default: 0.03)')
     t=source("time");g=t.add_mutually_exclusive_group(required=True);g.add_argument("--blick",type=int);g.add_argument('--at',help='b:BLICKS, q:QUARTERS, s:SECONDS, bar:N:BEAT')
     t=source('timing-check');t.add_argument('audio');tracks(t);t.add_argument('--audio-origin',type=float,default=0);t.add_argument('--search',type=float,default=.35);t.add_argument('--tolerance',type=float,default=.12);t.add_argument('-o','--output');t.add_argument('--force',action='store_true')
     t=source('audio-shift');t.add_argument('audio');tracks(t);t.add_argument('--seconds',type=float,required=True);t.add_argument('--audio-origin',type=float,default=0);write(t)
+    t=source('wave-align');t.add_argument('audio');tracks(t);write(t);t.add_argument('--scope',choices=['track','phrase'],default='track');t.add_argument('--gap',type=float,default=.35);t.add_argument('--search',type=float,default=.7);t.add_argument('--threshold',type=float,default=.12);t.add_argument('--tolerance',type=float,default=.008);t.add_argument('--audio-origin',type=float,default=0)
     timing_parser=sub.choices['timing-check'];timing_parser.add_argument('--start');timing_parser.add_argument('--end')
     b=sub.add_parser("batch");b.add_argument("manifest");b.add_argument("--keep-going",action="store_true")
     l=sub.add_parser("live");l.add_argument("action",choices=["install","call"]);l.add_argument("--scripts-dir");l.add_argument("--mailbox");l.add_argument("--session",default="default");l.add_argument("--method",default="host.info");l.add_argument("--args",default="{}");l.add_argument("--timeout",type=float,default=10)
@@ -136,6 +139,9 @@ def execute(a):
     if cmd=='groups':
         from .timing import groups
         return {'groups':groups(p,a.track)}
+    if cmd=='wave-align':
+        from .wave_align import write as align_write
+        return align_write(p,a.audio,a.output,a.track,a.force,gap=a.gap,search=a.search,threshold=a.threshold,tolerance=a.tolerance,origin=a.audio_origin,scope=a.scope)
     if cmd in {'timing-check','audio-shift'}:
         from .timing import check,read_pcm,shift
         if cmd=='audio-shift':return shift(p,a.audio,a.output,a.track,a.seconds,a.force,a.audio_origin)
@@ -159,7 +165,7 @@ def execute(a):
         report.update(_save(q,a));return report
     if cmd=="render":
         from .render import render
-        return render(a.project,a.output,a.profile,a.backend,a.track,a.stems,a.timeout,a.warmup,a.attempts,a.tail,a.force,a.channels,a.bit_depth,a.sample_rate,a.single_pass,resume=a.resume)
+        return render(a.project,a.output,a.profile,a.backend,a.track,a.stems,a.timeout,a.warmup,a.attempts,a.tail,a.force,a.channels,a.bit_depth,a.sample_rate,a.single_pass,resume=a.resume,entry_policy=a.entry_policy,entry_tolerance=a.entry_tolerance)
     if cmd=="edit":
         operations=read_json(a.recipe);q=apply(p,operations,a.allow_score_changes,a.score_lock)
         report=difference(p,q)

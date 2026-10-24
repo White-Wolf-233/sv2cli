@@ -31,6 +31,7 @@ Reviewed against the [SV2 user manual](https://sv2.docs.dreamtonics.com/en/inter
 | Notes CSV/JSON | Export/import numeric notes | `notes`, `convert csv-in/out`; replacing notes is an explicit score edit |
 | MusicXML | Native Studio import | Host-only; no silently lossy reimplementation in this release |
 | Audio render | Master stereo bus; selected tracks; numbered stems | Installed instrument VST3; PCM16/24, 1/2 channels |
+| Waveform entry acceptance | Reject late/unresolved first isolated attack; explicit guarded recording translation | `render --entry-policy check/align/report`, `wave-align`; later/all-note/phoneme timing remains separate |
 | Native aspiration / pitch export | Not exposed by main VST3 audio bus | Host-only; saved render configuration can be prepared with `render.configure` |
 | Full ARA | DAW integration | Host-only; do not pass the ARA plugin to this renderer |
 | Voice-to-MIDI | Vendor inference | Host-only |
