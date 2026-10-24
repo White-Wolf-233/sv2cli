@@ -178,6 +178,14 @@ class Project:
                 check_num(n.get("onset"), p+".onset", whole=True)
                 check_num(n.get("duration"), p+".duration", low=1, whole=True)
                 check_num(n.get("pitch"), p+".pitch", low=0, high=127, whole=True)
+                attrs=n.get('attributes',{})
+                if not isinstance(attrs,dict):
+                    add('note_attributes',p+'.attributes','Expected an attribute object')
+                else:
+                    for key,low,high in [('expValueX',0,1),('expValueY',0,1),('dF0VbrMod',0,2)]:
+                        if key in attrs:check_num(attrs[key],p+'.attributes.'+key,low,high)
+                    for key in ('muted','evenSyllableDuration'):
+                        if key in attrs and not isinstance(attrs[key],bool):add('note_attributes',p+'.attributes.'+key,'Expected boolean')
             for param, curve in g.get("parameters", {}).items():
                 last = -float("inf")
                 raw_points=curve.get("points", [])
@@ -220,6 +228,12 @@ class Project:
             mixer = t.get("mixer", {})
             check_num(mixer.get("pan", 0), f"tracks[{ti}].mixer.pan", -1, 1)
         marks = self.data.get("time", {}).get("tempo", [])
+        check_num(self.data.get('time',{}).get('startTimeSeconds',0),'time.startTimeSeconds')
+        try:
+            from .timing import meters
+            meters(self)
+        except (SVError,KeyError,TypeError,ValueError) as e:
+            add('meter_map','time.meter',str(e))
         if not marks or marks[0].get("position") != 0:
             add("tempo_start", "time.tempo", "Tempo map must start at position 0")
         positions = []

@@ -16,23 +16,21 @@ def run(job):
     if job.get('attempts',1)!=1:
         raise SVError('Automatic rendering retries are disabled','render_retries_disabled')
     from .native_transport import render_once
-    from .render_metrics import missing_windows
+    from .coverage import check as coverage_check
+    from .preflight import require_monophonic
     from .timing import read_pcm
     from .audio import check
     project=Project.load(job['project']);work=Path(job['work'])
+    require_monophonic(project)
     transport=render_once(job,project,event)
     target=work/'render.wav';audio,rate,_=read_pcm(target)
-    expected=[];mixes={i+1:t.get('mixer',{}) for i,t in project.tracks()}
-    solos={i for i,m in mixes.items() if m.get('solo')}
-    for n in project.notes():
-        if n['muted'] or mixes[n['track']].get('mute') or (solos and n['track'] not in solos):continue
-        a=project.seconds(n['onset']);b=project.seconds(n['onset']+n['duration'])
-        if b-a>.25:expected.append([a+(b-a)*.2,b-(b-a)*.2])
-    missing=missing_windows(audio,rate,expected)
-    coverage={'renderPasses':1,'expectedWindows':expected,'missingWindows':missing}
+    coverage=coverage_check(project,audio,rate,silence_dbfs=job.get('silenceDBFS',-80),
+                            max_silent_seconds=job.get('maxSilentSeconds',.5))
+    coverage['renderPasses']=1
     write_json(work/'coverage.json',coverage)
-    event('coverage',missingWindows=len(missing),expectedWindows=len(expected),missingWindowExamples=missing[:8])
-    if missing:raise SVError('Single render is incomplete; inspect coverage.json. No retry or accepted output is written.','incomplete_audio')
+    event('coverage',missingWindows=len(coverage['missingWindows']),expectedWindows=coverage['expectedNoteCount'],
+          unexpectedSilence=coverage['unexpectedSilence'][:8],missingWindowExamples=coverage['missingWindows'][:8])
+    if not coverage['valid']:raise SVError(f"Single render is incomplete: {len(coverage['missingWindows'])}/{coverage['expectedNoteCount']} note windows missing, {len(coverage['unexpectedSilence'])} unexpected silent spans. Inspect {work/'coverage.json'}; fix the source/plugin failure, do not retry until a lucky pass.",'incomplete_audio')
     report=check(target,expected_seconds=job['duration'])
     if not report['valid']:raise SVError(f"Single render failed audio checks: {report['failures']}",'invalid_audio')
     report['transport']=transport;write_json(work/'result.json',report)

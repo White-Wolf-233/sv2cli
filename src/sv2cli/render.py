@@ -62,19 +62,28 @@ def _worker(command, timeout, log):
         except KeyboardInterrupt:
             process.kill();process.wait();raise
     if status:
-        text=log.read_text("utf8",errors="replace")[-4000:]
-        raise SVError(f"Render backend exited {status}. {text}", "render_failed")
+        text=log.read_text("utf8",errors="replace")
+        for line in reversed(text.splitlines()):
+            try:
+                value=json.loads(line)
+                if isinstance(value,dict) and value.get('event')=='error':
+                    raise SVError(f"{value.get('message','Render failed')}; worker log: {log}",value.get('code','render_failed'))
+            except (ValueError,UnicodeError):pass
+        raise SVError(f"Render backend exited {status}. {text[-4000:]}", "render_failed")
 
-def render(source, output, profile_name="default", backend="vst3", tracks=None, stems=False, timeout=1800, warmup=15, attempts=1, tail=2, force=False, channels=2, bit_depth=16, sample_rate=44100, single_pass=False, resume=False, entry_policy=None, entry_tolerance=.03,entry_landmark='broadband'):
+def render(source, output, profile_name="default", backend="vst3", tracks=None, stems=False, timeout=1800, warmup=15, attempts=1, tail=2, force=False, channels=2, bit_depth=16, sample_rate=44100, single_pass=False, resume=False, entry_policy=None, entry_tolerance=.03,entry_landmark='broadband',target_peak=None,silence_dbfs=-80,max_silent_seconds=.5):
     original=Project.load(source)
     valid=original.validate()
     if not valid["valid"]:raise SVError(f"Project must pass validation before rendering: {valid['issues'][:4]}","invalid_project")
     output=Path(output).expanduser().resolve()
     cfg=profile(profile_name)
     if backend not in {"vst3","command"}:raise SVError("Backend must be vst3 or command")
-    from .project import finite
+    from .project import finite,numeric
     entry_policy=entry_policy or ('check' if backend=='vst3' else 'report')
     finite(entry_tolerance,'entry tolerance')
+    for value,label in [(timeout,'timeout'),(warmup,'warmup'),(tail,'tail')]:finite(value,label)
+    numeric(silence_dbfs,'silence dBFS',-150,-20);numeric(max_silent_seconds,'maximum silent seconds',.02,60)
+    if target_peak is not None:numeric(target_peak,'target peak dBFS',-60,-.1)
     if entry_policy not in {'check','align','report'} or entry_tolerance<.002:
         raise SVError('Use check/align/report and an entry tolerance of at least 2 ms')
     if entry_landmark not in {'broadband','voiced'}:raise SVError('Entry landmark must be broadband or voiced')
@@ -112,11 +121,12 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
         stat=Path(cfg['plugin']).stat()
         plugin_identity={'size':stat.st_size,'modifiedNs':stat.st_mtime_ns}
     from . import __version__
-    request={'version':__version__,'project':original.data,'config':cfg,'pluginIdentity':plugin_identity,
+    request={'acceptanceRevision':'all-note-rms-v1','version':__version__,'project':original.data,'config':cfg,'pluginIdentity':plugin_identity,
              'backend':backend,'tracks':[i for i,_ in selected],'stems':stems,
              'sampleRate':sample_rate,'channels':channels,'bitDepth':bit_depth,
              'tail':tail,'warmup':warmup,'attempts':attempts,'singlePass':single_pass,
              'entryPolicy':entry_policy,'entryTolerance':entry_tolerance,'entryLandmark':entry_landmark,
+             'targetPeakDBFS':target_peak,'silenceDBFS':silence_dbfs,'maxSilentSeconds':max_silent_seconds,
              'nativeHostSHA256':hashlib.sha256(Path(native_host).read_bytes()).hexdigest() if native_host else None}
     request_key=hashlib.sha256(json.dumps(request,sort_keys=True,allow_nan=False).encode()).hexdigest()
     prior=read_json(manifest_path) if resume and manifest_path.exists() else None
@@ -141,6 +151,7 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
                     transport='direct-vst3-sample-clock' if backend=='vst3' else 'command',automaticRetries=False,
                     nativeHostSHA256=request['nativeHostSHA256'])
     manifest['entryLandmark']=entry_landmark
+    manifest.update(targetPeakDBFS=target_peak,silenceDBFS=silence_dbfs,maxSilentSeconds=max_silent_seconds)
     for indices,dest,name in tasks:manifest['tasks'].append({'tracks':[i+1 for i in indices],'path':str(dest),'trackName':name,'status':'pending'})
     _checkpoint(manifest_path,manifest,force=force or resume)
     def digest(path):
@@ -188,10 +199,16 @@ def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,
         # must not mute selected tracks. Explicit mute still means silence.
         if stems or tracks:
             for _,t in project.tracks():t.setdefault("mixer",{})["solo"]=False
+        from .preflight import require_monophonic
+        preflight=require_monophonic(project)
+        write_json(work/'preflight.json',preflight)
+        for _,t in project.tracks():
+            if not t.get("renderEnabled",True):t.setdefault("mixer",{}).update(mute=True,solo=False)
         path=work/"project.svp";project.save(path)
-        duration=project.summary()["durationSeconds"]+tail
+        duration=original.summary()["durationSeconds"]+tail
         job={"project":str(path),"plugin":cfg.get("plugin"),"duration":duration,"work":str(work),"sampleRate":sample_rate,"channels":channels,"bitDepth":bit_depth,"warmupSeconds":warmup,"attempts":attempts,"singlePass":single_pass}
         if native_host:job['nativeHost']=native_host
+        job.update(silenceDBFS=manifest['silenceDBFS'],maxSilentSeconds=manifest['maxSilentSeconds'])
         job_path=work/"job.json";write_json(job_path,job)
         log=work/"worker.log"
         if backend=="vst3":
@@ -219,8 +236,15 @@ def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,
             audio,timing=accept(project,audio,work,entry_policy,entry_tolerance,entry_landmark)
             report=check(audio,expected_seconds=duration)
             if not report['valid']:raise SVError('Aligned output failed audio validation','invalid_audio')
+        normalization=None
+        if manifest['targetPeakDBFS'] is not None:
+            from .normalize import write as normalize
+            normalized=work/'normalized.wav'
+            normalization=normalize(audio,normalized,manifest['targetPeakDBFS'])
+            audio=normalized;report=check(audio,expected_seconds=duration)
+            if not report['valid']:raise SVError('Normalized output failed validation','invalid_audio')
         write_new(dest,audio.read_bytes(),force)
-        report.update(path=str(dest),trackName=name,log=str(log),sha256=digest(dest),reused=False,entryTiming=timing,nativeTransport=native_result)
+        report.update(path=str(dest),trackName=name,log=str(log),sha256=digest(dest),reused=False,entryTiming=timing,nativeTransport=native_result,normalization=normalization,preflight=preflight)
         reports.append(report)
         manifest['checkpointAudio']=[r for r in manifest['checkpointAudio'] if r.get('path')!=str(dest)]+[report]
         task['status']='complete'

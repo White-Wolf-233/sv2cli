@@ -19,6 +19,9 @@ SPECS = {
     'group.remove': ({'groups'}, {'tracks','references'}),
     'automation.set': ({'parameter','points'}, {'tracks','groups','references','mode'}),
     'pitch.controls': ({'controls'}, {'tracks','groups','references'}),
+    'notes.expression': ({'preset'}, FILTERS | {'vibrato'}),
+    'pitch.flatten': (set(), FILTERS | {'transitionMs','replaceControls'}),
+    'notes.articulate': ({'gapMs'}, FILTERS),
     'retake.activate': ({'id'}, {'tracks','groups','uuids','references'}),
     'tempo.set': ({'marks'}, set()), 'meter.set': ({'marks'}, set()),
     'render.configure': ({'values'}, set()), 'json.patch': ({'patch'}, set()),
@@ -47,6 +50,11 @@ def validate_recipe(operations):
     return operations
 
 def schema():
+    from .effects import SCHEMA
     return {'operations': {name: {'required':sorted(req), 'optional':sorted(opt)} for name,(req,opt) in SPECS.items()},
+            'noteExpression':{'presets':['rigid','default'],'expValueX':[0,1],'expValueY':[0,1],'vibratoModulation':[0,2]},
+            'pitchFlatten':{'transitionMs':[0,500],'scoreTimingChanged':False,'existingEdits':'explicit replacement on entire groups only'},
+            'articulation':{'gapMs':[.01,1000],'scoreChange':True},
+            'effects':{'fields':SCHEMA,'bounds':'Supported CLI contract; not an exhaustive vendor limit table. Unspecified numeric bounds require finite values.','reverbTypes':['clean']},
             'timePositions':'integer blicks, or strings with b:/q:/s:/bar: prefixes',
             'unknownFields':'rejected', 'referenceSelectors':'reference UUIDs, distinct from group UUIDs'}

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sv2cli"
-version = "0.3.0.dev0"
+version = "0.3.0.dev1"
 description = "Portable project editing and VST3 rendering for Synthesizer V Studio 2"
 readme = "README.md"
 requires-python = ">=3.10"

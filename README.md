@@ -132,3 +132,7 @@ python -m build
 CI checks the project tools on Windows/macOS/Linux and Python 3.10/3.12/3.13. Licensed plugin tests are separate from those checks. [Validation details](docs/validation.md) distinguish real synthesis, transport mocks and subjective listening.
 
 The CLI code is MIT-licensed; bundled `rxi/json.lua` keeps its MIT license. Optional audio-host dependencies and installed Dreamtonics products retain their own licenses. No engine binaries, voice databases, license files or copyrighted song projects are distributed.
+
+## Production feedback update
+
+Development version 0.3.0.dev1 adds monophonic vocal preflight, explicit MIDI overlap/polyphony policies, all-note coverage and score-aware silence checks, SV2 rigid/flat pitch control, sample-peak normalization and effect schemas. See [commands, evidence and boundaries](docs/feedback-fixes.md). Verify the actual package path with `doctor` when multiple installations exist.

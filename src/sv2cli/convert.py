@@ -1,4 +1,5 @@
 import csv
+from fractions import Fraction
 import io
 import json
 from pathlib import Path
@@ -30,10 +31,12 @@ def _mido():
     except ImportError as e:raise SVError("Install MIDI support: pip install 'sv2cli[midi]'", "missing_dependency") from e
 
 def midi_export(project, output, selectors=None, force=False, ppq=960):
+    ppq=integer(ppq,"MIDI PPQ")
+    if not 1<=ppq<=32767:raise SVError("MIDI PPQ must be in [1,32767]")
     mido=_mido();midi=mido.MidiFile(ticks_per_beat=ppq,charset="utf8")
     def tick(blick):
-        x=blick/QUARTER*ppq
-        if abs(x-round(x))>1e-6:raise SVError("MIDI export would round a note; choose a compatible --ppq", "lossy_conversion")
+        x=Fraction(blick)*ppq/QUARTER
+        if x.denominator!=1:raise SVError("MIDI export would round a note; choose a compatible --ppq", "lossy_conversion")
         if x<0:raise SVError("MIDI cannot represent negative onsets", "lossy_conversion")
         return round(x)
     meta=mido.MidiTrack();midi.tracks.append(meta)
@@ -50,6 +53,9 @@ def midi_export(project, output, selectors=None, force=False, ppq=960):
     prev=0
     for time,msg in sorted(events,key=lambda x:x[0]):msg.time=time-prev;meta.append(msg);prev=time
     rows=project.notes(selectors)
+    from .preflight import overlaps
+    ambiguous=[x for x in overlaps(rows) if x['pitches'][0]==x['pitches'][1]]
+    if ambiguous:raise SVError(f'MIDI export cannot preserve ambiguous overlapping same-pitch notes: {ambiguous[:3]}','lossy_conversion')
     for i,t in project.tracks(selectors):
         mt=mido.MidiTrack();midi.tracks.append(mt);mt.append(mido.MetaMessage("track_name",name=t.get("name",f"Track {i+1}")))
         events=[]
@@ -57,48 +63,14 @@ def midi_export(project, output, selectors=None, force=False, ppq=960):
             if r["track"]!=i+1:continue
             if r["musicalType"] not in {"singing","sing"}:raise SVError("MIDI export cannot preserve rap/spoken note modes", "lossy_conversion")
             on=tick(r["onset"]);off=tick(r["onset"]+r["duration"])
-            events.extend([(on,1,mido.MetaMessage("lyrics",text=r["lyrics"])),(on,2,mido.Message("note_on",note=r["pitch"],velocity=80)),(off,0,mido.Message("note_off",note=r["pitch"],velocity=0))])
+            events.extend([(on,1,mido.MetaMessage("lyrics",text=r["lyrics"])),(on,1,mido.Message("note_on",note=r["pitch"],velocity=80)),(off,0,mido.Message("note_off",note=r["pitch"],velocity=0))])
         prev=0
         for when,_,msg in sorted(events,key=lambda x:(x[0],x[1])):msg.time=when-prev;mt.append(msg);prev=when
     b=io.BytesIO();midi.save(file=b)
     return write_new(output,b.getvalue(),force)
 
-def midi_import(source, output, force=False):
-    mido=_mido();midi=mido.MidiFile(source,charset="utf8")
-    if midi.type==2:raise SVError("Asynchronous type-2 MIDI is unsupported", "unsupported_format")
-    if midi.ticks_per_beat<=0:raise SVError("SMPTE MIDI timecode is unsupported", "unsupported_format")
-    project=new_project();project.data["tracks"]=[];tempos={0:120};meter_ticks=[]
-    for track in midi.tracks:
-        when=0;pending={};rows=[];name=f"Track {len(project.data['tracks'])+1}";lyric="la"
-        for msg in track:
-            when+=msg.time
-            if msg.type=="track_name":name=msg.name
-            elif msg.type=="set_tempo":tempos[when]=mido.tempo2bpm(msg.tempo)
-            elif msg.type=="time_signature":meter_ticks.append((when,msg.numerator,msg.denominator))
-            elif msg.type=="lyrics":lyric=msg.text
-            elif msg.type=="note_on" and msg.velocity:
-                key=(msg.channel,msg.note)
-                if key in pending:raise SVError("Overlapping same-pitch MIDI notes are ambiguous", "lossy_conversion")
-                pending[key]=(when,lyric);lyric="la"
-            elif msg.type in {"note_off","note_on"}:
-                key=(msg.channel,msg.note)
-                if key not in pending:continue
-                start,text=pending.pop(key)
-                onset=start*QUARTER/midi.ticks_per_beat;duration=(when-start)*QUARTER/midi.ticks_per_beat
-                if int(onset)!=onset or int(duration)!=duration:raise SVError("MIDI timing cannot be represented exactly as blicks", "lossy_conversion")
-                if duration>0:rows.append({"onset":int(onset),"duration":int(duration),"pitch":msg.note,"lyrics":text})
-        if pending:raise SVError("MIDI contains unclosed notes", "invalid_file")
-        if rows:
-            t=empty_track(name);project.data["tracks"].append(t)
-            project=apply(project,[{"op":"notes.replace","tracks":[f"#{len(project.data['tracks'])}"],"notes":sorted(rows,key=lambda x:(x['onset'],x['pitch']))}],True)
-    project.data["time"]["tempo"]=[{"position":integer(t*QUARTER/midi.ticks_per_beat,"tempo position"),"bpm":v} for t,v in sorted(tempos.items())]
-    # Reject off-bar meter changes rather than silently moving them.
-    meters=[];last=0;bar=0;num=4;den=4
-    for tick,n,d in sorted(set(meter_ticks)):
-        beats=(tick-last)/midi.ticks_per_beat;bars=beats/(num*4/den)
-        if abs(bars-round(bars))>1e-6:raise SVError("Meter change is not at a bar boundary", "lossy_conversion")
-        bar+=round(bars);meters.append({"index":bar,"numerator":n,"denominator":d});last=tick;num=n;den=d
-    if meters:project.data["time"]["meter"]=meters if meters[0]["index"]==0 else [{"index":0,"numerator":4,"denominator":4}]+meters
-    project.update_ranges()
-    if not project.validate()["valid"]:raise SVError("Imported MIDI project is invalid")
+def midi_import(source, output, force=False, *, truncate_overlaps=False, polyphony="preserve", lyric_default="la", charset="utf8", report=None):
+    from .midi_importing import load
+    project, details=load(source,truncate_overlaps=truncate_overlaps,polyphony=polyphony,lyric_default=lyric_default,charset=charset)
+    if report is not None:report.update(details)
     return project.save(output,force)

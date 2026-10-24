@@ -59,3 +59,11 @@ JSON Patch example:
 ```
 
 Use a `test` before version-sensitive edits. A recipe that would produce invalid note timing, out-of-range pitches, broken group references or invalid automation is rejected. Native field payloads that are not structurally understood are preserved, not silently normalized.
+
+## SV2 expression, flat pitch and articulation
+
+- `notes.expression`: required `preset` (`rigid`/`default`), optional `vibrato` (0–2); standard note filters.
+- `pitch.flatten`: optional `transitionMs` (0–500, default 10), `replaceControls` (false); standard note filters. Preserves score fields.
+- `notes.articulate`: required `gapMs` (0.01–1000); standard note filters. Shortens note durations, requires explicit score-change permission.
+
+`pitch.controls` validates native point/curve payloads with decimal uint64 IDs and strictly increasing flat point pairs. `effects.set` nested field types, supported reverb enums, units and constraints are exposed at `recipe-schema.effects.fields`. Unspecified numeric bounds require finite values; they do not imply undocumented vendor acceptance. See [production feedback fixes](feedback-fixes.md).

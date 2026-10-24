@@ -5,7 +5,7 @@ import uuid
 from .errors import SVError
 from .project import QUARTER, PARAMETERS, VOICE_RANGES, empty_group, empty_ref, empty_track, guid, integer, finite, numeric
 
-SCORE_OPS = {"notes.replace", "notes.update", "notes.transpose", "notes.shift", "track.add", "track.remove", "track.clone", "tempo.set", "meter.set", "group.shift", "group.transpose", "group.remove", "lyrics.set", "phonemes.set"}
+SCORE_OPS = {"notes.replace", "notes.update", "notes.transpose", "notes.shift", "notes.articulate", "track.add", "track.remove", "track.clone", "tempo.set", "meter.set", "group.shift", "group.transpose", "group.remove", "lyrics.set", "phonemes.set"}
 VOICE_KEYS = set(VOICE_RANGES)|{"vocalModeInherited", "vocalModePreset", "vocalModeParams", "tF0VbrStart", "fF0Vbr", "dF0Vbr", "pF0Vbr", "tF0VbrLeft", "tF0VbrRight", "paramConsonantStrength", "paramMouthOpening", "choirPitchDeviation", "choirTimingDeviation", "choirLoudnessDeviation"}
 
 def _notes(project, selectors, groups=None, references=None):
@@ -148,7 +148,8 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
             for _,t in result.tracks(selectors):
                 t.setdefault("mixer", {}).update(deepcopy(values))
         elif name == "effects.set":
-            values=op.get("values", {})
+            from .effects import validate as validate_effects
+            values=validate_effects(op.get("values", {}))
             if set(values)-{"room", "postRoomEq", "compressor", "reverb"}:
                 raise SVError("Unknown effect; use room, postRoomEq, compressor, reverb")
             for _,t in result.tracks(selectors):
@@ -259,9 +260,19 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
             if op.get("mode","cubic") not in {"cubic","linear","cosine"}:raise SVError("Unknown interpolation mode")
             for _,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 g.setdefault("parameters",{})[param]={"mode":op.get("mode","cubic"),"points":[v for pair in sorted(points) for v in pair]}
+        elif name in {"notes.expression","pitch.flatten","notes.articulate"}:
+            from .tuning import selected,expression,flatten,articulate
+            matched=curves=0
+            for ref,g in _notes(result,selectors,op.get('groups'),op.get('references')):
+                ns=selected(g,ref,op);matched+=len(ns)
+                if name=='notes.expression':expression(ns,op['preset'],op.get('vibrato'))
+                elif name=='pitch.flatten':curves+=flatten(result,g,ref,ns,op.get('transitionMs',10),op.get('replaceControls',False))
+                else:articulate(result,ref,ns,op['gapMs'])
+            if not matched:raise SVError('No notes matched the edit','empty_selection')
+            result.edit_report.append({'op':name,'matchedNotes':matched,'generatedCurves':curves})
         elif name == "pitch.controls":
-            controls=op.get("controls")
-            if not isinstance(controls,list):raise SVError("controls must be an array")
+            from .tuning import validate_controls
+            controls=validate_controls(op.get("controls"))
             for _,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 g["pitchControls"]=deepcopy(controls)
         elif name == "retake.activate":

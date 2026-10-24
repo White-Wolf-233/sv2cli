@@ -41,3 +41,5 @@ Reviewed against the [SV2 user manual](https://sv2.docs.dreamtonics.com/en/inter
 | Environments/batch | Profiles, environment overrides, argv jobs | `config`, `doctor`, `batch`; command backend has no shell |
 
 The CLI covers project data rather than emulating every screen interaction. Saved payload operations do not guarantee that a particular installed bank supports the requested Vocal Mode, language or unusual note attribute.
+
+The 0.3.0.dev1 [feedback update](feedback-fixes.md) adds vocal preflight, MIDI voice splitting/default lyrics, explicit overlap repair, rigid/flat pitch control, activity checks including rapid notes, score-aware silence rejection, effect schemas and sample-peak normalization. `validate` is structural; use `preflight` for vocal suitability. Neither constitutes listening or all-phoneme proof.

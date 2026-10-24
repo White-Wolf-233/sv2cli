@@ -18,6 +18,7 @@ def missing_windows(audio,sample_rate,windows,min_peak=1e-6):
     missing=[]
     for begin,end in windows:
         lo=max(0,round(begin*sample_rate));hi=min(audio.shape[1],round(end*sample_rate))
-        if hi<=lo:continue
+        if hi<=lo:
+            missing.append([begin,end]);continue
         if float(np.max(np.abs(audio[:,lo:hi])))<min_peak:missing.append([begin,end])
     return missing

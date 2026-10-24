@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0.dev1
+
+- Include every positive-duration note in activity coverage; reject unexpected score-active RMS silence and out-of-audio windows.
+- Add located vocal preflight and explicit MIDI polyphony split/top/reject policies, FIFO overlap truncation, channel separation, default lyrics and charset.
+- Fix simultaneous MIDI lyric/note ordering; use exact rational MIDI tick conversion.
+- Add SV2 rigid expression and score-preserving native flat curves, optional explicit articulation, and plugin readback verification of tuning/effects.
+- Add explicit sample-peak normalization, dBFS metrics, validated nested effect schemas and an effects command.
+- Keep stems on the complete shared timeline; preserve worker error codes; invalidate resume across CLI/acceptance versions.
+- Validate meter maps and known expression attributes; report actual runtime paths in doctor.
+- Preserve the single-pass/no-automatic-retry architecture. Full commands and measured boundaries: docs/feedback-fixes.md.
+
+
 ## 0.3.0.dev0 — 2026-10-25 (local development)
 
 - Replace the drifting DawDreamer graph path with a direct VST3 host using an integer sample clock and message-thread block processing.

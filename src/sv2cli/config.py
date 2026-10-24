@@ -75,8 +75,9 @@ def catalog(roots):
 
 def doctor(name="default"):
     import importlib.util
+    from . import __version__
     p=profile(name)
     deps={x:importlib.util.find_spec(x) is not None for x in ("dawdreamer","numpy","mido")}
     plugin=p.get("plugin")
     native=p.get('native_host');native_exists=bool(native and Path(native).is_file())
-    return {"platform":platform.platform(),"python":sys.version.split()[0],"profile":name,"configPath":str(config_path()),"plugin":plugin,"pluginExists":bool(plugin and Path(plugin).exists()),"nativeHost":native,"nativeHostExists":native_exists,"dependencies":deps,"ffmpeg":shutil.which("ffmpeg"),"dataRoots":p.get("data_roots",[]),"offlineProjectTools":True,"renderReadyToAttempt":bool(plugin and Path(plugin).exists() and native_exists and deps["numpy"]),"renderVerified":False,"note":"doctor detects prerequisites only; native rendering uses a direct single-pass VST3 sample clock. Windows is locally validated; macOS requires native plugin validation."}
+    return {"version":__version__,"pythonExecutable":sys.executable,"packagePath":str(Path(__file__).resolve().parent),"platform":platform.platform(),"python":sys.version.split()[0],"profile":name,"configPath":str(config_path()),"plugin":plugin,"pluginExists":bool(plugin and Path(plugin).exists()),"nativeHost":native,"nativeHostExists":native_exists,"dependencies":deps,"ffmpeg":shutil.which("ffmpeg"),"dataRoots":p.get("data_roots",[]),"offlineProjectTools":True,"renderReadyToAttempt":bool(plugin and Path(plugin).exists() and native_exists and deps["numpy"]),"renderVerified":False,"note":"doctor detects prerequisites only; native rendering uses a direct single-pass VST3 sample clock. Windows is locally validated; macOS requires native plugin validation."}

@@ -2,6 +2,8 @@
 
 [English](README.md) · [完整功能清单](docs/features.md) · [批量编辑说明](docs/recipes.md)
 
+当前开发版本：**0.3.0.dev1**。先用 `--version` 和 `doctor` 核对实际加载路径，避免误用旧全局安装。
+
 为 Synthesizer V Studio 2 做的可复用命令行工具。检查和修复 SVP、切换声库、批量改发声参数和混音、导入导出 MIDI、渲染混音及分轨，都可以从终端运行。
 
 配套 [sv2cli-production skill](https://github.com/White-Wolf-233/sv2cli-skill) 放在独立仓库，覆盖实际发声时序、力度与主次、保谱编辑、覆盖保存和交付流程。
@@ -98,3 +100,16 @@ sv2cli --profile studio doctor
 工程编辑与 VST3 渲染不需要启动 Studio 脚本。读取当前编辑器的计算音素、音高、播放控制或生成 Retake，可安装可选 Lua bridge；安装后在 Studio 里重扫脚本并启动一次。详情见 [实时 API](docs/live.md)。
 
 已经逐类核对功能范围，见 [功能清单](docs/features.md)。购买激活、下载声库、Full ARA、原生分离气声音频、Voice-to-MIDI、MusicXML 导入仍由 Studio 提供。工具不包含引擎、声库或授权文件。
+
+## 实测反馈修复
+
+```sh
+sv2cli convert midi-in score.mid --polyphony split --lyric-default a -o voices.svp
+sv2cli preflight voices.svp
+sv2cli tune song.svp --mode flat --transition-ms 5 --vibrato 0 -o flat.svp
+sv2cli render flat.svp --stems -o stems --bit-depth 24
+sv2cli audio-normalize mix.wav --target-peak -1 -o delivery.wav
+sv2cli coverage-check song.svp isolated.wav --track '#1' -o coverage.json
+```
+
+同音重叠可显式 `--truncate-overlaps`；导入默认保留复音并警告，声乐渲染前拒绝同轨重叠。所有短音都纳入活动检查，另检查谱面应发声区间的连续静音。新分轨保留统一完整时间轴。`tune --mode flat` 在不缩短音符的情况下生成平直音高曲线，`rigid` 仅控制表达。`--normalize`/`--target-peak` 是明确选择的采样峰值处理；效果字段与约束可查 `recipe-schema.effects`。八项反馈、命令、实测和剩余范围详见 [修复记录](docs/feedback-fixes.md)。

@@ -12,6 +12,11 @@ def _numpy():
         return None
 
 def check(path, expected_seconds=None, min_peak=1e-6, clipping_limit=0.001):
+    from .project import finite,numeric
+    if expected_seconds is not None:
+        finite(expected_seconds,'expected duration')
+        if expected_seconds<0:raise SVError('Expected duration must be nonnegative')
+    numeric(min_peak,'minimum peak',0,1);numeric(clipping_limit,'clipping limit',0,1)
     path=Path(path)
     np=_numpy()
     try:
@@ -45,7 +50,9 @@ def check(path, expected_seconds=None, min_peak=1e-6, clipping_limit=0.001):
                 if size%align:raise SVError("Partial PCM frame", "invalid_audio")
                 f.seek(pos);remaining=size
                 while remaining:
-                    b=f.read(min(remaining,align*16384));remaining-=len(b)
+                    b=f.read(min(remaining,align*16384))
+                    if not b:raise SVError('WAV changed or was truncated while reading','invalid_audio')
+                    remaining-=len(b)
                     if np is not None:
                         if typ==3:v=np.frombuffer(b,dtype='<f4' if bits==32 else '<f8').astype(np.float64)
                         elif bits==24:
@@ -83,6 +90,6 @@ def check(path, expected_seconds=None, min_peak=1e-6, clipping_limit=0.001):
             clip_ratio=clipped/count if count else 0
             if clip_ratio>clipping_limit:failures.append("clipping")
             if expected_seconds is not None and duration+0.1<expected_seconds:failures.append("too_short")
-            return {"path":str(path.resolve()),"valid":not failures,"failures":failures,"sampleRate":rate,"channels":channels,"bitDepth":bits,"encoding":"float" if typ==3 else "PCM", "frames":count//channels,"durationSeconds":duration,"peak":peak,"rms":rms,"nonzeroRatio":nonzero/count if count else 0,"clippedRatio":clip_ratio,"activeSeconds":[i for i,v in sorted(seconds_bins.items()) if v>min_peak]}
+            return {"path":str(path.resolve()),"valid":not failures,"failures":failures,"sampleRate":rate,"channels":channels,"bitDepth":bits,"encoding":"float" if typ==3 else "PCM", "frames":count//channels,"durationSeconds":duration,"peak":peak,"rms":rms,"peakDBFS":20*math.log10(peak) if peak else None,"rmsDBFS":20*math.log10(rms) if rms else None,"nonzeroRatio":nonzero/count if count else 0,"clippedRatio":clip_ratio,"activeSeconds":[i for i,v in sorted(seconds_bins.items()) if v>min_peak]}
     except OSError as e:
         raise SVError(f"Cannot read audio: {e}", "invalid_audio") from e

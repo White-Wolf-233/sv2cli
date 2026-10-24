@@ -95,6 +95,9 @@ def test_stem_job_drops_unreferenced_library_but_preserves_source(project,tmp_pa
     orphan=empty_group('orphan')
     project.data['library']=[active,orphan]
     project.data['tracks'][0]['groups']=[empty_ref(active)]
+    # Keep this reference-isolation test a valid monophonic vocal arrangement.
+    project.data['tracks'][0]['groups'][0]['blickOffset']=2*705600000
+    project.update_ranges()
     project.data['tracks'].append(empty_track('Unselected'))
     original=deepcopy(project.data)
     source=tmp_path/'song.svp';project.save(source)

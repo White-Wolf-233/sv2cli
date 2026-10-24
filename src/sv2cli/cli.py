@@ -28,6 +28,7 @@ def _parser():
     def tracks(s):s.add_argument("--track",action="append",help="Exact name or one-based #N; repeat for multiple tracks")
     n=sub.add_parser("new");write(n);n.add_argument("--name",default="Track 1");n.add_argument("--bpm",type=float,default=120)
     source("inspect");source("validate")
+    s=source("preflight");tracks(s);s.add_argument("-o","--output");s.add_argument("--force",action="store_true")
     s=source("notes");tracks(s);s.add_argument("--start");s.add_argument("--end");s.add_argument("-o","--output");s.add_argument("--force",action="store_true")
     s=source('groups');tracks(s)
     s=source("repair");write(s,True)
@@ -38,6 +39,12 @@ def _parser():
     v=sub.add_parser("voices");v.add_argument("--name");v.add_argument("--data-root",action="append")
     c=sub.add_parser("config");c.add_argument("action",choices=["show","set"]);c.add_argument("--name",default="default");c.add_argument("--value",help="JSON object or @path.json")
     c=sub.add_parser("convert");c.add_argument("format",choices=["midi-in","midi-out","csv-in","csv-out"]);c.add_argument("source");write(c);c.add_argument("--project");c.add_argument("--track");c.add_argument("--ppq",type=int,default=960)
+    c.add_argument('--truncate-overlaps',action='store_true',help='Explicitly truncate earlier same-pitch notes at the next onset; FIFO note-offs; report changes')
+    pg=c.add_mutually_exclusive_group();pg.add_argument('--polyphony',choices=['preserve','reject','split','top'],default='preserve')
+    pg.add_argument('--top-voice',dest='polyphony',action='store_const',const='top',help='Explicitly discard lower simultaneous pitches')
+    pg.add_argument('--monophonic',dest='polyphony',action='store_const',const='reject',help='Reject polyphonic input')
+    c.add_argument('--lyric-default',default='la',help='Default only for notes without a MIDI lyric event')
+    c.add_argument('--midi-charset',default='utf8',help='MIDI text encoding, e.g. utf8 or latin1')
     r=source("render");write(r);tracks(r)
     r.add_argument("--backend",choices=["vst3","command"],default="vst3")
     r.add_argument("--stems",action="store_true");r.add_argument("--timeout",type=float,default=1800)
@@ -47,6 +54,16 @@ def _parser():
     r.add_argument("--bit-depth",type=int,choices=[16,24],default=16);r.add_argument("--sample-rate",type=int,default=44100)
     r.add_argument("--single-pass",action="store_true",help='Deprecated compatibility flag: all renders use one pass')
     a=sub.add_parser("audio-check");a.add_argument("audio");a.add_argument("--expected-seconds",type=float)
+    a=sub.add_parser('audio-normalize');a.add_argument('audio');write(a);a.add_argument('--target-peak',type=float,default=-1,help='Sample peak in dBFS, default -1')
+    a=source('coverage-check');a.add_argument('audio');tracks(a);a.add_argument('-o','--output');a.add_argument('--force',action='store_true')
+    a.add_argument('--silence-dbfs',type=float,default=-80);a.add_argument('--max-silent-seconds',type=float,default=.5)
+    ng=r.add_mutually_exclusive_group();ng.add_argument('--normalize',dest='target_peak',action='store_const',const=-1)
+    ng.add_argument('--target-peak',dest='target_peak',type=float,help='Explicit sample-peak normalization in dBFS')
+    r.add_argument('--silence-dbfs',type=float,default=-80);r.add_argument('--max-silent-seconds',type=float,default=.5)
+    t=source('tune');write(t,True);tracks(t);t.add_argument('--mode',choices=['rigid','default','flat'],required=True)
+    t.add_argument('--start');t.add_argument('--end');t.add_argument('--transition-ms',type=float,default=10)
+    t.add_argument('--replace-controls',action='store_true');t.add_argument('--vibrato',type=float);t.add_argument('--dry-run',action='store_true')
+    t=source('effects');write(t,True);tracks(t);t.add_argument('--params',required=True,help='JSON object or @path.json');t.add_argument('--dry-run',action='store_true')
     r.add_argument('--resume',action='store_true',help='Reuse verified completed renders from a matching manifest')
     r.add_argument('--entry-policy',choices=['check','align','report'],help='Native default: check first isolated waveform entry; align explicitly translates the recording; report permits unchecked mixes')
     r.add_argument('--entry-tolerance',type=float,default=.03,help='First waveform entry tolerance in seconds (default: 0.03)')
@@ -85,7 +102,7 @@ def _save(p,a):
 
 def execute(a):
     cmd=a.command
-    editing=cmd in {'repair','edit','voice','mixer'}
+    editing=cmd in {'repair','edit','voice','mixer','tune','effects'}
     if getattr(a,'in_place',False):a.output=a.project;a.force=True
     if getattr(a,"output",None):
         for key in ("project","source","recipe"):
@@ -108,12 +125,19 @@ def execute(a):
     if cmd=="config":
         if a.action=="show":return {"config":load_config(),"resolved":profile(a.profile)}
         return {"configPath":set_profile(a.name,_value(a.value))}
+    if cmd=='audio-normalize':
+        from .normalize import write as normalize
+        return normalize(a.audio,a.output,a.target_peak,a.force)
     if cmd=="audio-check":
         from .audio import check
         return check(a.audio,a.expected_seconds)
     if cmd=="convert":
         from .convert import midi_import,midi_export,csv_import,csv_export
-        if a.format=="midi-in":return {"output":midi_import(a.source,a.output,a.force)}
+        if a.format=="midi-in":
+            report={}
+            out=midi_import(a.source,a.output,a.force,truncate_overlaps=a.truncate_overlaps,polyphony=a.polyphony,
+                            lyric_default=a.lyric_default,charset=a.midi_charset,report=report)
+            return {"output":out,"conversion":report}
         if a.format=="midi-out":return {"output":midi_export(Project.load(a.source),a.output,[a.track] if a.track else None,force=a.force,ppq=a.ppq)}
         if a.format=="csv-out":return {"output":csv_export(Project.load(a.source),a.output,[a.track or '#1'],a.force)}
         if not a.project:raise SVError("csv-in requires --project and --track")
@@ -147,6 +171,18 @@ def execute(a):
     from .timing import describe,position
     if cmd=="inspect":return p.summary()
     if cmd=="validate":return p.validate()
+    if cmd=='preflight':
+        from .preflight import check
+        report=check(p,a.track)
+        if a.output:write_json(a.output,report,a.force)
+        return report
+    if cmd=='coverage-check':
+        from .coverage import check
+        from .timing import read_pcm
+        audio,rate,_=read_pcm(a.audio)
+        report=check(p,audio,rate,a.track,a.silence_dbfs,a.max_silent_seconds)
+        if a.output:write_json(a.output,report,a.force)
+        return report
     if cmd=="time":return describe(p,a.blick if a.blick is not None else a.at)
     if cmd=='groups':
         from .timing import groups
@@ -191,7 +227,7 @@ def execute(a):
         report.update(_save(q,a));return report
     if cmd=="render":
         from .render import render
-        return render(a.project,a.output,a.profile,a.backend,a.track,a.stems,a.timeout,a.warmup,a.attempts,a.tail,a.force,a.channels,a.bit_depth,a.sample_rate,a.single_pass,resume=a.resume,entry_policy=a.entry_policy,entry_tolerance=a.entry_tolerance,entry_landmark=a.entry_landmark)
+        return render(a.project,a.output,a.profile,a.backend,a.track,a.stems,a.timeout,a.warmup,a.attempts,a.tail,a.force,a.channels,a.bit_depth,a.sample_rate,a.single_pass,resume=a.resume,entry_policy=a.entry_policy,entry_tolerance=a.entry_tolerance,entry_landmark=a.entry_landmark,target_peak=a.target_peak,silence_dbfs=a.silence_dbfs,max_silent_seconds=a.max_silent_seconds)
     if cmd=="edit":
         operations=read_json(a.recipe);q=apply(p,operations,a.allow_score_changes,a.score_lock)
         report=difference(p,q)
@@ -199,7 +235,15 @@ def execute(a):
         if not a.dry_run:report.update(_save(q,a))
         else:report["dryRun"]=True
         return report
-    if cmd=="voice":
+    if cmd=='tune':
+        base={'tracks':a.track}
+        if a.start is not None:base['start']=a.start
+        if a.end is not None:base['end']=a.end
+        ops=[dict(base,op='notes.expression',preset='rigid' if a.mode=='flat' else a.mode)]
+        if a.vibrato is not None:ops[0]['vibrato']=a.vibrato
+        if a.mode=='flat':ops.append(dict(base,op='pitch.flatten',transitionMs=a.transition_ms,replaceControls=a.replace_controls))
+    elif cmd=='effects':ops=[{'op':'effects.set','tracks':a.track,'values':_value(a.params)}]
+    elif cmd=="voice":
         ops=[]
         if a.name:
             db={"name":a.name,"language":a.language,"phoneset":a.phoneset,"backendType":a.backend,"version":a.database_version,"languageOverride":"","phonesetOverride":""}
@@ -217,6 +261,7 @@ def execute(a):
     else:raise SVError(f"Unsupported command {cmd}")
     q=apply(p,ops,score_lock=True)
     report=difference(p,q)
+    report['operations']=q.edit_report
     if a.dry_run:report['dryRun']=True
     else:report.update(_save(q,a))
     return report

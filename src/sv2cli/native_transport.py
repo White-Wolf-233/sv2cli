@@ -35,6 +35,36 @@ def clock_maps(project, rate):
     return tempo,meter
 
 
+def verify_tuning(requested,loaded):
+    """Reject a plugin that silently ignores explicitly requested SV2 pitch edits."""
+    import math
+    def equivalent(a,b):
+        if isinstance(a,(int,float)) and not isinstance(a,bool):
+            return isinstance(b,(int,float)) and not isinstance(b,bool) and math.isclose(a,b,rel_tol=1e-5,abs_tol=1e-5)
+        if isinstance(a,list):return isinstance(b,list) and len(a)==len(b) and all(equivalent(x,y) for x,y in zip(a,b))
+        if isinstance(a,dict):return isinstance(b,dict) and all(k in b and equivalent(v,b[k]) for k,v in a.items())
+        return a==b
+    loaded_groups={g['uuid']:g for _,t in loaded.tracks() for _,g in loaded.references(t)}
+    count=0
+    for ti,t in requested.tracks():
+        fx=t.get('mixer',{}).get('fxParams',{})
+        if fx and not equivalent(fx,loaded.data['tracks'][ti].get('mixer',{}).get('fxParams',{})):
+            raise SVError(f'Plugin did not preserve requested effects on track {ti+1}; values may be unsupported or clamped','effect_load_mismatch')
+        for _,g in requested.references(t):
+            actual=loaded_groups.get(g['uuid'],{})
+            if g.get('pitchControls') and not equivalent([{k:v for k,v in c.items() if k!='id'} for c in g['pitchControls']],
+                                                       [{k:v for k,v in c.items() if k!='id'} for c in actual.get('pitchControls',[])]):
+                raise SVError(f'Plugin did not preserve requested pitch controls in group {g["uuid"]}','tuning_load_mismatch')
+            actual_notes={n.get('uuid'):n for n in actual.get('notes',[])}
+            for n in g.get('notes',[]):
+                attrs={k:v for k,v in n.get('attributes',{}).items() if k in {'expValueX','expValueY','dF0VbrMod'}}
+                if attrs:
+                    if not equivalent(attrs,actual_notes.get(n.get('uuid'),{}).get('attributes',{})):
+                        raise SVError(f'Plugin did not preserve requested expression on note {n.get("uuid")}','tuning_load_mismatch')
+                    count+=1
+    return count
+
+
 def render_once(job,project,event):
     work=Path(job['work']);tempo,meter=clock_maps(project,job['sampleRate'])
     request={**job,'tempoSegments':tempo,'meterSegments':meter,'bufferSize':job.get('bufferSize',512)}
@@ -55,6 +85,7 @@ def render_once(job,project,event):
                 loaded=Project(read_project((work/'loaded-state.bin').read_bytes()))
                 if loaded.score_fingerprint()!=project.score_fingerprint():
                     raise SVError('Plugin did not load the requested score','project_load_mismatch')
+                verify_tuning(project,loaded)
                 loaded_verified=True
             elif kind=='native_error':native_errors.append(value.get('message','Native transport failed'))
             elif kind=='native_single_pass':
@@ -79,4 +110,4 @@ def render_once(job,project,event):
     if not completed:raise SVError('Native transport did not complete its single pass','native_protocol_error')
     return {'transport':'direct-vst3-sample-clock','renderPasses':1,
             'automaticRetries':False,'audioTranslated':False,'resampled':False,
-            'tempoSegments':tempo,'meterSegments':meter,'loadedScoreVerified':True}
+            'tempoSegments':tempo,'meterSegments':meter,'loadedScoreVerified':True,'loadedTuningVerified':True}
