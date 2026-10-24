@@ -6,6 +6,38 @@ establish sample timing. In the motivating real render, common written entries
 had different waveform energy delays on S, A and T, despite the plugin reporting
 zero latency. No fixed singer-wide latency is assumed.
 
+The current native renderer uses the direct single-pass host in `native/`.
+The older drift/correction reproduction below is historical evidence, not the
+current rendering algorithm. The renderer does not translate PCM or rerender
+until an entry passes.
+
+## Choosing an acoustic landmark
+
+Broadband activity is the default and includes consonants/breath. A written
+vowel anchor can legitimately follow an unvoiced consonant: in the real A2
+opening word, broadband energy began 88 ms early while low-band voiced energy
+began only 2 ms after the note. Its paired A1 spectrogram showed the same vowel
+entry. Moving that complete recording would introduce a timing error.
+
+Inspect this distinction explicitly, including on a retained rejected WAV:
+
+```
+sv2cli entry-check song.svp raw.wav --track '#1' --landmark voiced -o entry.json
+sv2cli render song.svp -o voice.wav --entry-landmark voiced
+```
+
+`voiced` is an **80–1600 Hz energy proxy**, using centered 20 ms Hann windows,
+2 ms hops and bounded FFT batches. It is not a phoneme classifier. Reports
+retain broadband entries alongside the selected landmark; neither the audio
+nor the tolerance is changed. It is an explicit choice, not an automatic search
+over thresholds/landmarks until a result passes. Uniformly early/late voiced
+carriers are still rejected in regression tests. Use the acoustic definition
+appropriate to the score/word, and inspect ambiguous boundaries.
+
+`wave-align --landmark voiced` can use the same explicitly chosen landmark for
+a separately justified recording translation. It is never invoked implicitly
+by the native host. The selected landmark is part of render resume identity.
+
 ## Render acceptance
 
 Native `render` now defaults to `--entry-policy check`: after readiness and

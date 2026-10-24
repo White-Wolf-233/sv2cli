@@ -65,7 +65,7 @@ def _worker(command, timeout, log):
         text=log.read_text("utf8",errors="replace")[-4000:]
         raise SVError(f"Render backend exited {status}. {text}", "render_failed")
 
-def render(source, output, profile_name="default", backend="vst3", tracks=None, stems=False, timeout=1800, warmup=15, attempts=4, tail=2, force=False, channels=2, bit_depth=16, sample_rate=44100, single_pass=False, resume=False, entry_policy=None, entry_tolerance=.03):
+def render(source, output, profile_name="default", backend="vst3", tracks=None, stems=False, timeout=1800, warmup=15, attempts=1, tail=2, force=False, channels=2, bit_depth=16, sample_rate=44100, single_pass=False, resume=False, entry_policy=None, entry_tolerance=.03,entry_landmark='broadband'):
     original=Project.load(source)
     valid=original.validate()
     if not valid["valid"]:raise SVError(f"Project must pass validation before rendering: {valid['issues'][:4]}","invalid_project")
@@ -77,11 +77,17 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
     finite(entry_tolerance,'entry tolerance')
     if entry_policy not in {'check','align','report'} or entry_tolerance<.002:
         raise SVError('Use check/align/report and an entry tolerance of at least 2 ms')
+    if entry_landmark not in {'broadband','voiced'}:raise SVError('Entry landmark must be broadband or voiced')
     if backend=="vst3" and (not cfg.get("plugin") or not Path(cfg["plugin"]).exists()):
         raise SVError("VST3 instrument plugin not found. Set SV2CLI_PLUGIN or a named profile.", "plugin_missing")
     if sample_rate not in {22050,44100,48000,88200,96000}:raise SVError("Unsupported sample rate")
     if channels not in {1,2} or bit_depth not in {16,24}:raise SVError("Use 1/2 channels and PCM16/24")
     if timeout<=0 or warmup<0 or tail<0 or attempts<1:raise SVError("Invalid render limits")
+    if attempts!=1:raise SVError('Automatic render retries are disabled. Use one pass; inspect failures rather than selecting a lucky render.','render_retries_disabled')
+    native_host=None
+    if backend=='vst3':
+        from .native_transport import library_path
+        native_host=library_path(cfg)
     selected=original.tracks(tracks)
     if not selected:raise SVError("No tracks selected")
     if resume and force:raise SVError('Use --resume or --force, not both')
@@ -110,7 +116,8 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
              'backend':backend,'tracks':[i for i,_ in selected],'stems':stems,
              'sampleRate':sample_rate,'channels':channels,'bitDepth':bit_depth,
              'tail':tail,'warmup':warmup,'attempts':attempts,'singlePass':single_pass,
-             'entryPolicy':entry_policy,'entryTolerance':entry_tolerance}
+             'entryPolicy':entry_policy,'entryTolerance':entry_tolerance,'entryLandmark':entry_landmark,
+             'nativeHostSHA256':hashlib.sha256(Path(native_host).read_bytes()).hexdigest() if native_host else None}
     request_key=hashlib.sha256(json.dumps(request,sort_keys=True,allow_nan=False).encode()).hexdigest()
     prior=read_json(manifest_path) if resume and manifest_path.exists() else None
     if resume and (prior is None or prior.get('requestFingerprint')!=request_key):
@@ -127,10 +134,13 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
     manifest={"jobId":job_id,"backend":backend,"source":str(Path(source).resolve()),"sourceScoreFingerprint":original.score_fingerprint(),
               'requestFingerprint':request_key,'status':'running','audio':reports,'checkpointAudio':list(prior_audio),'tasks':[], 'skipped':skipped,
               'stems':stems,'loadedScoreVerified':False,'expectedActivityChecked':False,
-              'convergenceRequired':backend=='vst3' and not single_pass,'warmupSeconds':warmup,'attemptLimit':attempts,
+              'convergenceRequired':False,'renderPassesPerTask':1,'warmupSeconds':warmup,'attemptLimit':1,
               'work':str(work_root),'subjectiveListeningVerified':False}
     manifest.update(entryPolicy=entry_policy,entryToleranceSeconds=entry_tolerance,
-                    firstWaveformEntryVerified=False,allNoteOnsetsVerified=False)
+                    firstWaveformEntryVerified=False,allNoteOnsetsVerified=False,
+                    transport='direct-vst3-sample-clock' if backend=='vst3' else 'command',automaticRetries=False,
+                    nativeHostSHA256=request['nativeHostSHA256'])
+    manifest['entryLandmark']=entry_landmark
     for indices,dest,name in tasks:manifest['tasks'].append({'tracks':[i+1 for i in indices],'path':str(dest),'trackName':name,'status':'pending'})
     _checkpoint(manifest_path,manifest,force=force or resume)
     def digest(path):
@@ -140,7 +150,7 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
         return h.hexdigest()
     try:
         return _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,cfg,backend,
-                      timeout,warmup,attempts,tail,force,channels,bit_depth,sample_rate,single_pass,tracks,stems,digest,entry_policy,entry_tolerance)
+                      timeout,warmup,attempts,tail,force,channels,bit_depth,sample_rate,single_pass,tracks,stems,digest,entry_policy,entry_tolerance,native_host,entry_landmark)
     except (Exception,KeyboardInterrupt) as error:
         manifest['status']='cancelled' if isinstance(error,KeyboardInterrupt) else 'failed'
         for task in manifest['tasks']:
@@ -150,7 +160,7 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
         raise
 
 def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,cfg,backend,
-           timeout,warmup,attempts,tail,force,channels,bit_depth,sample_rate,single_pass,tracks,stems,digest,entry_policy,entry_tolerance):
+           timeout,warmup,attempts,tail,force,channels,bit_depth,sample_rate,single_pass,tracks,stems,digest,entry_policy,entry_tolerance,native_host,entry_landmark):
     for indices,dest,name in tasks:
         task=manifest['tasks'][len(reports)]
         old=next((r for r in (prior.get('checkpointAudio') or prior.get('audio',[])) if r.get('path')==str(dest)),None) if prior else None
@@ -181,6 +191,7 @@ def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,
         path=work/"project.svp";project.save(path)
         duration=project.summary()["durationSeconds"]+tail
         job={"project":str(path),"plugin":cfg.get("plugin"),"duration":duration,"work":str(work),"sampleRate":sample_rate,"channels":channels,"bitDepth":bit_depth,"warmupSeconds":warmup,"attempts":attempts,"singlePass":single_pass}
+        if native_host:job['nativeHost']=native_host
         job_path=work/"job.json";write_json(job_path,job)
         log=work/"worker.log"
         if backend=="vst3":
@@ -202,13 +213,14 @@ def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,
         # waveform timing. Check the actual PCM before accepting the output.
         # Report-only command backends retain dependency-free operation.
         timing={'policy':entry_policy,'status':'unchecked','firstWaveformEntryVerified':False}
+        native_result=read_json(work/'result.json').get('transport') if backend=='vst3' and (work/'result.json').exists() else None
         if backend=='vst3' or entry_policy!='report':
             from .render_timing import accept
-            audio,timing=accept(project,audio,work,entry_policy,entry_tolerance)
+            audio,timing=accept(project,audio,work,entry_policy,entry_tolerance,entry_landmark)
             report=check(audio,expected_seconds=duration)
             if not report['valid']:raise SVError('Aligned output failed audio validation','invalid_audio')
         write_new(dest,audio.read_bytes(),force)
-        report.update(path=str(dest),trackName=name,log=str(log),sha256=digest(dest),reused=False,entryTiming=timing)
+        report.update(path=str(dest),trackName=name,log=str(log),sha256=digest(dest),reused=False,entryTiming=timing,nativeTransport=native_result)
         reports.append(report)
         manifest['checkpointAudio']=[r for r in manifest['checkpointAudio'] if r.get('path')!=str(dest)]+[report]
         task['status']='complete'

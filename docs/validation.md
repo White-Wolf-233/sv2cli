@@ -1,5 +1,40 @@
 # Validation
 
+## 0.3.0.dev0 direct-host validation (2026-10-25)
+
+The Python suite passes 116 tests locally. It now covers exact tempo/meter sample
+maps, off-960-grid tempo marks, rejected nonzero origins, missing-host errors
+without fallback, loaded-score callback ordering, duplicate-pass rejection,
+entry gates/corrections, explicit low-band landmarks that preserve consonant
+lead-ins while rejecting shifted carriers, and retry rejection before launch.
+
+The native host was built locally with MSVC 19.44 and JUCE 8.0.6 on Windows.
+The same six-note S and A openings each produced a 9.482 s first RMS attack in
+four fixed validation passes; the written entry is 9.473684 s. No translation
+was applied. Restoring old clock-context flags in a direct-host control also
+remained stable, so no particular flag is claimed as the dependency's root bug.
+The replacement bypasses the old DawDreamer hosting path entirely.
+
+Fresh CLI workers also rendered the complete S, A and T parts once each with
+the original tempo/meter maps, zero missing expected activity windows and
+unshifted first attacks at 9.482, 9.482 and 9.480 s. Seventeen later measurable
+shared S/A phrase entries differ by 0–30 ms. This is waveform-energy evidence;
+all-note/phoneme timing and subjective listening remain separate.
+
+All seven actual vocal tracks were subsequently rendered in fresh workers,
+once per track, including later divisi entries. All expected activity windows
+were present. A2 and B2 were initially rejected by the broadband entry gate
+because their consonants precede the vowel beat. Their **same retained PCM** was
+inspected and checked with the explicit voiced-energy landmark, yielding
++2.105 ms and -1.895 ms respectively. No rerender, shift, threshold relaxation
+or time stretch was used. Both broadband failures and the separate review
+evidence were retained. These are distinct acoustic landmarks, not identical
+claims about first sound versus vowel entry.
+
+Historical convergence-based results below describe older versions. They are
+not the current production acceptance strategy. Current production performs one
+pass and fails visibly on incomplete or out-of-tolerance audio.
+
 ## 0.2.0 validation (2026-10-22)
 
 The Windows/Python 3.12 core suite now contains 96 passing tests. New regression checks exercise same-track/cross-track repeated references at different offsets, UUID selectors across multi-step recipes, effective pitch limits, MIDI selection, batch profile inheritance, source overwrite/backup/failed atomic replacement, bar/beat/seconds conversion, missing/late activity, audio shift regression/crop rejection, checkpoint failure/resume and modified-output conflict recovery. Cross-platform CI is separate from this local result.

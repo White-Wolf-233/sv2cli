@@ -15,10 +15,13 @@ python -m pip install ".[render,midi]"
 sv2cli doctor
 sv2cli inspect song.svp
 sv2cli validate song.svp
-sv2cli render song.svp -o mix.wav --warmup 30 --timeout 1800
+# 先构建 native/ 并设置 SV2CLI_NATIVE_HOST，见 native/README.md。
+sv2cli render song.svp --stems -o stems --warmup 30 --timeout 1800
 ```
 
-本地真实渲染验证环境为 Windows 11、Python 3.12、SV2 2.2.1、Kasane Teto AI 2。macOS 渲染代码已实现，尚待真实插件验证；Linux 可用工程工具和自定义命令后端。不同 Python 版本的渲染能力取决于 DawDreamer 是否提供对应安装包。
+本地真实渲染验证环境为 Windows 11、Python 3.12、SV2 2.2.1、Kasane Teto AI 2。
+新的原生库通过 C ABI 调用，不再依赖特定 Python 版本的 DawDreamer 安装包。
+macOS 仍需真实插件验证；Linux 可用工程工具和自定义命令后端。
 
 ## 换声库与调音色
 
@@ -70,7 +73,12 @@ sv2cli job-status stems
 
 改音高、节奏、歌词、音素、速度和结构需要 `--allow-score-changes`。`--score-lock` 会核对这些字段是否保持一致；发声参数和音高曲线仍会影响实际演唱，不能把锁谱检查当成听感验证。
 
-渲染支持超时、取消、单声部、分轨、单/双声道和 PCM16/24。会检查空文件、静音、时长、应发声的时间窗、能量稳定性与削波。结果附带 JSON 报告，失败保留日志。分轨文件使用 `01.wav` 等编号，报告保存原声部名称。
+原生渲染改用 [直接 VST3 宿主](native/README.md)：在消息所属线程逐块处理声音，
+处理消息时保持采样时钟不变，随后推进整数采样位置。预热期间保持停止状态，之后只渲染一次。
+已删除重复渲染和能量包络收敛循环；`--attempts` 只允许 `1`，失败保留证据并报错。
+宿主不做波形平移、拉伸或误差驱动的重试，也不回退到旧 DawDreamer 路径。
+支持超时、取消、分轨、单/双声道和 PCM16/24，并检查工程回读、活动窗口、格式与削波。
+结果附带 JSON 报告；分轨使用 `01.wav` 等编号，报告保存声部名称。
 
 原生渲染现在默认实测独立声部的首个波形起音，超过 30 毫秒容差或无法定位就拒绝交付。
 多轨请使用 `--stems`；明确接受未检查的合排时使用 `--entry-policy report`。

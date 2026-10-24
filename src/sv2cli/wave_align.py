@@ -34,14 +34,34 @@ def rms_envelope(audio,rate):
     return np.arange(len(energy))*hop/rate,energy,hop
 
 
-def entries(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=0.):
+def entry_envelope(audio,rate,landmark):
+    if landmark=='broadband':return rms_envelope(audio,rate)
+    if landmark!='voiced':raise SVError('Entry landmark must be broadband or voiced')
+    # Explicit low-band voicing proxy, not a phoneme classifier. A centered
+    # 20-ms window avoids a causal filter delay; 2-ms hops match the RMS report.
+    # Process bounded batches and retain stereo power (no phase-cancelling sum).
+    np=_numpy();hop=max(1,round(rate*.002));width=max(16,round(rate*.020))
+    count=(audio.shape[1]+hop-1)//hop;window=np.hanning(width)
+    bands=(np.fft.rfftfreq(width,1/rate)>=80)&(np.fft.rfftfreq(width,1/rate)<=1600)
+    padded=np.pad(audio,((0,0),(width//2,width)))
+    result=np.empty(count)
+    for first in range(0,count,512):
+        size=min(512,count-first);begin=first*hop;end=begin+(size-1)*hop+width
+        frames=np.lib.stride_tricks.sliding_window_view(padded[:,begin:end],width,axis=1)[:,::hop,:]
+        spectrum=np.fft.rfft(frames*window,axis=-1)
+        power=(np.abs(spectrum[...,bands])**2).sum(axis=-1)*2/(width*np.sum(window**2))
+        result[first:first+size]=np.sqrt(power.mean(axis=0))
+    return np.arange(count)*hop/rate,result,hop
+
+
+def entries(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=0.,landmark='broadband'):
     np=_numpy()
     finite(rate,'sample rate')
     if rate<=0 or int(rate)!=rate:raise SVError('Sample rate must be a positive integer')
     for x,label in [(gap,'phrase gap'),(search,'search'),(threshold,'threshold'),(origin,'origin')]:finite(x,label)
     if gap<=0 or search<=0 or not 0<threshold<1:raise SVError('Invalid waveform entry limits')
     if audio.ndim!=2 or audio.shape[0] not in {1,2} or not audio.size or not np.isfinite(audio).all():raise SVError('Invalid or empty mono/stereo PCM samples')
-    groups=phrases(project,selectors,gap,origin);times,energy,hop=rms_envelope(audio,rate)
+    groups=phrases(project,selectors,gap,origin);times,energy,hop=entry_envelope(audio,rate,landmark)
     result=[]
     for i,g in enumerate(groups):
         prior=groups[i-1]['end'] if i else -math.inf
@@ -49,7 +69,7 @@ def entries(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=
         lo=max(0,g['start']-search,prior+.04)
         hi=min(g['start']+search,max(g['firstEnd']+.15,g['start']+.4),g['end'])
         ids=np.flatnonzero((times>=lo)&(times<hi))
-        row={k:v for k,v in g.items() if k!='notes'};row.update(observed=None,delta=None)
+        row={k:v for k,v in g.items() if k!='notes'};row.update(observed=None,delta=None,landmark=landmark)
         if len(ids):
             peak=float(energy[ids].max());level=max(1e-6,peak*threshold)
             hits=[k for k in ids if k+2<len(energy) and np.all(energy[k:k+3]>level)]
@@ -59,11 +79,11 @@ def entries(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=
     return result
 
 
-def align(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=0.,tolerance=.008,scope='track'):
+def align(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=0.,tolerance=.008,scope='track',landmark='broadband'):
     np=_numpy();finite(tolerance,'tolerance')
     if tolerance<.002:raise SVError('Tolerance must be at least the 2ms waveform envelope resolution')
     if scope not in {'track','phrase'}:raise SVError('Scope must be track or phrase')
-    all_entries=entries(project,audio,rate,selectors,gap,search,threshold,origin)
+    all_entries=entries(project,audio,rate,selectors,gap,search,threshold,origin,landmark)
     before=all_entries[:1] if scope=='track' else all_entries
     if any(r['observed'] is None for r in before):
         raise SVError('An entry is unresolved or already active at the search boundary; inspect waveforms before alignment','unresolved_entry')
@@ -104,7 +124,7 @@ def align(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=0.
         target_a=a+cut_lo;target_b=b-cut_hi
         if target_b>target_a:out[:,target_a:target_b]=audio[:,src_a+cut_lo:src_b-cut_hi]
         moved.append({'firstID':before[i]['firstID'],'start':before[i]['start'],'end':before[i]['end'],'advanceSeconds':offset/rate,'sourceObservedEntry':before[i]['observed'],'boundarySamples':[a,b]})
-    all_after=entries(project,out,rate,selectors,gap,search,threshold,origin)
+    all_after=entries(project,out,rate,selectors,gap,search,threshold,origin,landmark)
     after=all_after[:1] if scope=='track' else all_after
     for r in after:
         if r['observed'] is None or abs(r['delta'])>tolerance:
@@ -115,7 +135,7 @@ def align(project,audio,rate,selectors,gap=.35,search=.7,threshold=.12,origin=0.
         lo=max(0,round((a+(b-a)*.2)*rate));hi=min(audio.shape[1],round((a+(b-a)*.8)*rate))
         if hi>lo and np.max(np.abs(audio[:,lo:hi]))>1e-6 and np.max(np.abs(out[:,lo:hi]))<=1e-6:
             raise SVError('Alignment emptied a previously active note','timing_regression')
-    report={'method':scope+'-waveform-entry-translation','scope':scope,'before':before,'after':after,'allObservedEntriesBefore':all_entries,'allObservedEntriesAfter':all_after,'translations':moved,'sampleRate':rate,'frames':audio.shape[1],'maximumEntryErrorSeconds':max(abs(r['delta']) for r in after),'scoreUnchanged':True,'resampled':False,'pitchShifted':False,'waveformEntriesWithinTolerance':True,'allNoteOnsetsVerified':False,'phonemeAlignmentVerified':False,'subjectiveListeningVerified':False}
+    report={'method':scope+'-waveform-entry-translation','landmark':landmark,'scope':scope,'before':before,'after':after,'allObservedEntriesBefore':all_entries,'allObservedEntriesAfter':all_after,'translations':moved,'sampleRate':rate,'frames':audio.shape[1],'maximumEntryErrorSeconds':max(abs(r['delta']) for r in after),'scoreUnchanged':True,'resampled':False,'pitchShifted':False,'waveformEntriesWithinTolerance':True,'allNoteOnsetsVerified':False,'phonemeAlignmentVerified':False,'subjectiveListeningVerified':False}
     return out,report
 
 

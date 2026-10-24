@@ -1,6 +1,6 @@
 # Environment profiles
 
-Core commands require only Python 3.10+. MIDI needs `sv2cli[midi]`; native rendering needs `sv2cli[render]`, the VST3 instrument, an available desktop and an activated singer. Dreamtonics SV2 has Windows/macOS installations; a native Linux render path is not claimed.
+Core commands require only Python 3.10+. MIDI needs `sv2cli[midi]`; native rendering needs `sv2cli[render]`, the [built transport library](../native/README.md), the VST3 instrument, an available desktop and an activated singer. Dreamtonics SV2 has Windows/macOS installations; a native Linux render path is not claimed.
 
 Config location:
 
@@ -10,11 +10,14 @@ Config location:
 | macOS | `~/Library/Application Support/sv2cli/config.json` |
 | Linux | `$XDG_CONFIG_HOME/sv2cli/config.json` or `~/.config/sv2cli/config.json` |
 
-Set `SV2CLI_CONFIG` to use another file. `SV2CLI_PLUGIN` overrides the resolved plugin path. `SV2CLI_MAILBOX` sets the live bridge mailbox root. The default profile discovers standard VST3 and Dreamtonics data paths; custom named profiles must exist explicitly.
+Set `SV2CLI_CONFIG` to use another file. `SV2CLI_PLUGIN` overrides the plugin path.
+`SV2CLI_NATIVE_HOST` overrides the profile's `native_host` library path.
+`SV2CLI_MAILBOX` sets the live bridge mailbox root. The default profile discovers
+standard VST3 and Dreamtonics data paths; custom profiles must exist explicitly.
 
 ```json
 {"profiles":{
-  "studio":{"plugin":"/Library/Audio/Plug-Ins/VST3/Synthesizer V Studio 2 Plugin.vst3"},
+  "studio":{"plugin":"/Library/Audio/Plug-Ins/VST3/Synthesizer V Studio 2 Plugin.vst3","native_host":"/absolute/path/libsv2cli_transport.dylib"},
   "adapter":{"render_command":["my-render-adapter","--svp","{project}","--wav","{output}","--seconds","{duration}"]}
 }}
 ```

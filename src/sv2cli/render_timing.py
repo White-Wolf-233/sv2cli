@@ -7,7 +7,7 @@ from .timing import read_pcm
 from .wave_align import entries, write as align_write
 
 
-def accept(project, source, work, policy='check', tolerance=.03):
+def accept(project, source, work, policy='check', tolerance=.03,landmark='broadband'):
     """Return a checked/explicitly aligned WAV and auditable timing evidence.
 
     Energy landmarks cannot establish phoneme or every-note timing. Mixed audio
@@ -22,8 +22,8 @@ def accept(project, source, work, policy='check', tolerance=.03):
     audible=sorted({n['track'] for n in project.notes() if not n['muted']
                     and not mixes[n['track']].get('mute')
                     and (not solos or n['track'] in solos)})
-    report={'policy':policy,'toleranceSeconds':tolerance,
-            'method':'first-isolated-waveform-entry-2ms-rms',
+    report={'policy':policy,'toleranceSeconds':tolerance,'landmark':landmark,
+            'method':'first-isolated-waveform-entry-2ms-'+landmark,
             'firstWaveformEntryVerified':False,'allNoteOnsetsVerified':False,
             'phonemeAlignmentVerified':False,'subjectiveListeningVerified':False,
             'scoreFingerprint':project.score_fingerprint(),'scoreUnchanged':True}
@@ -36,7 +36,8 @@ def accept(project, source, work, policy='check', tolerance=.03):
         return source,report
     selectors=[f'#{audible[0]}']
     audio,rate,_=read_pcm(source)
-    measured=entries(project,audio,rate,selectors)
+    measured=entries(project,audio,rate,selectors,landmark=landmark)
+    if landmark!='broadband':report['broadbandEntriesBefore']=entries(project,audio,rate,selectors)
     report.update(entriesBefore=measured,entriesAfter=measured,
                   status='unresolved' if measured[0]['observed'] is None else 'measured')
     first=measured[0]
@@ -51,7 +52,7 @@ def accept(project, source, work, policy='check', tolerance=.03):
         # Explicit opt-in: this moves the whole recording, preserving every
         # sample interval. Later phrase entries remain individually reported.
         target=work/'entry-aligned.wav'
-        correction=align_write(project,source,target,selectors,tolerance=tolerance)
+        correction=align_write(project,source,target,selectors,tolerance=tolerance,landmark=landmark)
         report.update(status='aligned',firstWaveformEntryVerified=True,
                       entriesAfter=correction['allObservedEntriesAfter'],
                       advanceSeconds=correction['translations'][0]['advanceSeconds'],

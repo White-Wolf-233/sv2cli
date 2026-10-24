@@ -45,6 +45,7 @@ def profile(name="default"):
     p=dict(p)
     if os.environ.get("SV2CLI_PLUGIN"):
         p["plugin"]=os.environ["SV2CLI_PLUGIN"]
+    if os.environ.get('SV2CLI_NATIVE_HOST'):p['native_host']=os.environ['SV2CLI_NATIVE_HOST']
     p.setdefault("plugin",next((str(x) for x in plugin_candidates() if x.exists()),None))
     p.setdefault("data_roots",[str(x) for x in data_roots() if x.exists()])
     return p
@@ -77,4 +78,5 @@ def doctor(name="default"):
     p=profile(name)
     deps={x:importlib.util.find_spec(x) is not None for x in ("dawdreamer","numpy","mido")}
     plugin=p.get("plugin")
-    return {"platform":platform.platform(),"python":sys.version.split()[0],"profile":name,"configPath":str(config_path()),"plugin":plugin,"pluginExists":bool(plugin and Path(plugin).exists()),"dependencies":deps,"ffmpeg":shutil.which("ffmpeg"),"dataRoots":p.get("data_roots",[]),"offlineProjectTools":True,"renderReadyToAttempt":bool(plugin and Path(plugin).exists() and deps["dawdreamer"] and deps["numpy"]),"renderVerified":False,"note":"doctor detects prerequisites only; run an actual render to verify audio. SV2 native render supports Windows/macOS; Linux core tools and command backend are supported."}
+    native=p.get('native_host');native_exists=bool(native and Path(native).is_file())
+    return {"platform":platform.platform(),"python":sys.version.split()[0],"profile":name,"configPath":str(config_path()),"plugin":plugin,"pluginExists":bool(plugin and Path(plugin).exists()),"nativeHost":native,"nativeHostExists":native_exists,"dependencies":deps,"ffmpeg":shutil.which("ffmpeg"),"dataRoots":p.get("data_roots",[]),"offlineProjectTools":True,"renderReadyToAttempt":bool(plugin and Path(plugin).exists() and native_exists and deps["numpy"]),"renderVerified":False,"note":"doctor detects prerequisites only; native rendering uses a direct single-pass VST3 sample clock. Windows is locally validated; macOS requires native plugin validation."}

@@ -84,7 +84,7 @@ def test_first_entry_success_does_not_certify_differently_delayed_later_phrase(t
 def test_native_acceptance_gate_runs_before_final_output_and_records_resume_policy(tmp_path,monkeypatch):
     p=score();src=tmp_path/'score.svp';p.save(src)
     plugin=tmp_path/'fake.vst3';plugin.write_bytes(b'fake')
-    monkeypatch.setattr('sv2cli.render.profile',lambda name:{'plugin':str(plugin)})
+    monkeypatch.setattr('sv2cli.render.profile',lambda name:{'plugin':str(plugin),'native_host':str(plugin)})
     def worker(command,timeout,log):
         job=json.loads(Path(command[-1]).read_text())
         delayed(Path(job['work'])/'render.wav',rate=22050,duration=job['duration'])
@@ -102,3 +102,33 @@ def test_native_acceptance_gate_runs_before_final_output_and_records_resume_poli
     assert resumed['audio'][0]['reused'] and resumed['firstWaveformEntryVerified']
     with pytest.raises(SVError,match='settings'):
         render(src,target,sample_rate=22050,bit_depth=24,resume=True,entry_policy='report')
+
+
+def test_retry_requests_are_rejected_before_launching_a_worker(tmp_path,monkeypatch):
+    p=score();src=tmp_path/'score.svp';p.save(src)
+    monkeypatch.setattr('sv2cli.render.profile',lambda name:{'render_command':['fake']})
+    def forbidden(*args):pytest.fail('A retry request must not launch a worker')
+    monkeypatch.setattr('sv2cli.render._worker',forbidden)
+    with pytest.raises(SVError) as exc:
+        render(src,tmp_path/'audio.wav',backend='command',attempts=2)
+    assert exc.value.code=='render_retries_disabled'
+
+
+@pytest.mark.parametrize('offset',[0,-.1,.1])
+def test_explicit_voicing_landmark_distinguishes_leadin_from_actual_carrier_shift(tmp_path,offset):
+    p=score();rate=8000;a=np.zeros((2,rate*5));src=tmp_path/'raw.wav'
+    for start,hz,duration in [(1+offset-.1,3300,.1),(1+offset,220,.8),(3+offset,330,.8)]:
+        lo=round(start*rate);n=round(duration*rate)
+        a[:,lo:lo+n]=.1*np.sin(np.arange(n)*2*np.pi*hz/rate)
+    with wave.open(str(src),'wb') as w:
+        w.setparams((2,3,rate,0,'NONE','none'));w.writeframes(encode(a,24))
+    before=src.read_bytes()
+    if offset:
+        with pytest.raises(SVError) as exc:accept(p,src,tmp_path,landmark='voiced')
+        assert exc.value.code=='entry_timing_mismatch'
+    else:
+        out,r=accept(p,src,tmp_path,landmark='voiced')
+        assert out==src and r['firstWaveformEntryVerified']
+        assert r['broadbandEntriesBefore'][0]['delta']<-.09
+        assert abs(r['entriesBefore'][0]['delta'])<.01
+    assert src.read_bytes()==before

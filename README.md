@@ -6,7 +6,10 @@ A reusable CLI for **Synthesizer V Studio 2** projects: inspect and repair SVP f
 
 For agent-assisted production, use the separate [sv2cli-production skill](https://github.com/White-Wolf-233/sv2cli-skill). It covers measured timing, dynamics, score protection, overwrite choices and delivery.
 
-Project tools are dependency-free and work on Windows, macOS, and Linux. The native rendering backend uses a DAW host and an application event loop—**no screenshot recognition, mouse coordinates, or keyboard automation**. A licensed editor/plugin and activated voice are still required to synthesize audio.
+Project tools are dependency-free and work on Windows, macOS, and Linux. Native
+rendering uses a separately built direct VST3 host and its message loop. A
+licensed plugin and activated voice are required. No screenshot recognition,
+mouse coordinates or keyboard automation is used.
 
 ```sh
 git clone https://github.com/White-Wolf-233/sv2cli.git
@@ -15,10 +18,14 @@ python -m pip install ".[render,midi]"
 sv2cli doctor
 sv2cli inspect song.svp
 sv2cli validate song.svp
-sv2cli render song.svp -o mix.wav --warmup 30 --timeout 1800
+# Build native/ and set SV2CLI_NATIVE_HOST first; see native/README.md.
+sv2cli render song.svp --stems -o stems --warmup 30 --timeout 1800
 ```
 
-Python 3.10+ is required for the core. Native render extras also need a Python/OS combination for which DawDreamer publishes a wheel. **Windows 11 / Python 3.12 / SV2 2.2.1 / Teto AI 2** is the locally tested render configuration; macOS rendering is implemented but needs independent plugin validation. Linux supports project tools and a configurable command backend, not a native Dreamtonics SV2 installation.
+Python 3.10+ is required for the core. The native library uses a versioned C ABI
+instead of a Python-version-specific host wheel. **Windows 11 / Python 3.12 /
+SV2 2.2.1 / Teto AI 2** is locally tested. macOS needs independent native plugin
+validation. Linux supports core tools and the command backend.
 
 ## Common jobs
 
@@ -69,7 +76,13 @@ sv2cli batch examples/batch.json
 sv2cli capabilities
 ```
 
-Native renders use isolated workers, PCM16/24, timeout/cancellation, expected-note activity checks and energy-envelope convergence. The plugin's loaded score is read back and verified before rendering. Silence, empty WAVs, incomplete duration, missing activity, invalid plugin state or excessive clipping fail instead of becoming a successful result. Each output has a JSON manifest; worker logs and intermediate files remain in `.sv2cli-jobs` for diagnosis. Stem filenames are numbered (`01.wav`), with original track names in the manifest.
+Native renders use the [direct single-pass VST3 host](native/README.md), isolated
+workers, PCM16/24 and timeout/cancellation. It processes audio and plugin messages
+on the owning thread with an integer sample clock. Loaded score identity,
+activity, format and clipping are checked. A failed render is rejected; automatic
+retries and energy-envelope convergence loops are disabled. Each output has a
+JSON manifest and retained job evidence. Stems use numbered filenames mapped
+back to their original track names.
 
 Native rendering also checks the **first actual isolated waveform entry** by
 default (30 ms tolerance). Multi-track jobs should use `--stems`; explicitly

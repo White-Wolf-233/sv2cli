@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0.dev0 — 2026-10-25 (local development)
+
+- Replace the drifting DawDreamer graph path with a direct VST3 host using an integer sample clock and message-thread block processing.
+- Exactly one native render pass per task; remove readiness-convergence render loops and reject retry requests before a worker is launched.
+- Preserve public state-envelope adaptation, loaded-score verification, main-bus routing, isolation, format/activity checks and checkpointed resume.
+- Split tempo/meter changes at sample boundaries; reject unverified nonzero time origins instead of silently shifting them.
+- Include native-library SHA-256 in resume identity; require a configured native host with no legacy fallback.
+- Retain measured entry acceptance and explicit post-render correction as separate operations; no automatic PCM translation is part of the native transport.
+- Add explicit `entry-check` and broadband/voiced landmark selection, preserving consonant lead-in evidence instead of moving already aligned vowels.
+- The Python core remains MIT; the separately built JUCE-linked native host is AGPL-3.0-or-later.
+
 ## 0.2.0 — 2026-10-22
 
 - Explicit in-place SVP editing with atomic replacement, source-change detection and timestamped backups; voice/mixer dry-runs.

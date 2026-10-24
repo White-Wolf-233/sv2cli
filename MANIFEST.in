@@ -4,3 +4,4 @@ recursive-include examples *.json
 recursive-include tests *.py
 recursive-include scripts *.py
 recursive-include src/sv2cli/assets *.lua *.LICENSE
+recursive-include native *.cpp CMakeLists.txt README.md LICENSE
