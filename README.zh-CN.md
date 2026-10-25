@@ -1,8 +1,10 @@
 # sv2cli
 
+0.3.0.dev2 新增填词分音核对：`lyrics-plan-schema` 查看格式，`lyrics-check --plan ... --require-full-project` 检查逐段词文与每音对应，`render --lyrics-plan ...` 在加载插件前拦住未完成或不匹配的计划。`lyrics.set` / `phonemes.set` 改为单轨、按绝对拍点排序，拒绝同时起音歧义；报告具体音符顺序。[使用说明](docs/lyrics.md)。
+
 [English](README.md) · [完整功能清单](docs/features.md) · [批量编辑说明](docs/recipes.md)
 
-当前开发版本：**0.3.0.dev1**。先用 `--version` 和 `doctor` 核对实际加载路径，避免误用旧全局安装。
+当前开发版本：**0.3.0.dev2**。先用 `--version` 和 `doctor` 核对实际加载路径，避免误用旧全局安装。
 
 为 Synthesizer V Studio 2 做的可复用命令行工具。检查和修复 SVP、切换声库、批量改发声参数和混音、导入导出 MIDI、渲染混音及分轨，都可以从终端运行。
 

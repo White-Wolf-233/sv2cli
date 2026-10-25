@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0.dev2
+
+- Add dependency-free `lyrics-plan-schema` and `lyrics-check` for independent phrase-text and exact syllable-to-note plans, reference offsets, continuation diagnostics and explicit full-project coverage.
+- Add optional `render --lyrics-plan` to reject incomplete, unreviewed or mismatched underlay before plugin loading; propagate plan/project hashes and evidence boundaries.
+- Fix positional `lyrics.set` / `phonemes.set` to use absolute onset across groups. Reject multiple-track and simultaneous-onset ambiguity; report exact note/reference order. This intentionally replaces the former storage-order behavior.
+- Add regression cases for misplaced continuations with identical text/counts, copied verse words, source protection, batch failure and no-plugin render gating.
+
 ## 0.3.0.dev1
 
 - Include every positive-duration note in activity coverage; reject unexpected score-active RMS silence and out-of-audio windows.

@@ -200,7 +200,10 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
             t["mainGroup"]["notes"]=[_new_note(r) for r in rows]
             t["mainRef"]["blickOffset"]=0;t["mainRef"]["pitchOffset"]=0
         elif name in {"notes.update", "notes.transpose", "notes.shift", "lyrics.set", "phonemes.set"}:
-            notes=[]
+            positional=name in {'lyrics.set','phonemes.set'}
+            if positional and len(result.tracks(selectors))!=1:
+                raise SVError('Positional lyrics/phonemes select exactly one track; use an explicit tracks selector','ambiguous_note_order')
+            notes=[];positions=[];identities=[]
             for ref,g in _notes(result,selectors,op.get("groups"),op.get('references')):
                 for n in g.get("notes",[]):
                     if op.get("uuids") and n.get("uuid") not in op["uuids"]:
@@ -210,10 +213,18 @@ def apply(project, operations, allow_score_changes=False, score_lock=False):
                     if "end" in op and n["onset"]+ref.get("blickOffset",0)>=op["end"]:
                         continue
                     notes.append(n)
+                    positions.append(n['onset']+ref.get('blickOffset',0))
+                    identities.append({'noteID':n.get('uuid'),'referenceID':ref.get('uuid'),'onset':positions[-1]})
             if not notes:
                 raise SVError('No notes matched the edit', 'empty_selection')
             result.edit_report.append({'op':name, 'matchedNotes':len(notes)})
             if name in {"lyrics.set", "phonemes.set"}:
+                if len(set(positions))!=len(positions):
+                    raise SVError('Simultaneous notes have ambiguous positional lyric order; select a single voice or use notes.update with uuids and references','ambiguous_note_order')
+                order=sorted(range(len(notes)),key=lambda i:positions[i])
+                notes=[notes[i] for i in order]
+                result.edit_report[-1]['noteOrder']=[identities[i] for i in order]
+                result.edit_report[-1]['ordering']='absolute-onset'
                 field="lyrics" if name=="lyrics.set" else "phonemes"
                 words=op.get("values")
                 if not isinstance(words,list) or len(words)!=len(notes):

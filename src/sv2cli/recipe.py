@@ -52,6 +52,7 @@ def validate_recipe(operations):
 def schema():
     from .effects import SCHEMA
     return {'operations': {name: {'required':sorted(req), 'optional':sorted(opt)} for name,(req,opt) in SPECS.items()},
+            'positionalText':{'operations':['lyrics.set','phonemes.set'],'tracks':'exactly one','order':'absolute-onset','simultaneousOnsets':'rejected; use explicit UUID/reference edits','continuation':'explicit - entries; no automatic syllable splitting'},
             'noteExpression':{'presets':['rigid','default'],'expValueX':[0,1],'expValueY':[0,1],'vibratoModulation':[0,2]},
             'pitchFlatten':{'transitionMs':[0,500],'scoreTimingChanged':False,'existingEdits':'explicit replacement on entire groups only'},
             'articulation':{'gapMs':[.01,1000],'scoreChange':True},

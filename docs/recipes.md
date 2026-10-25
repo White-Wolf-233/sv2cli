@@ -27,7 +27,7 @@ Score-changing operations need `--allow-score-changes`. `--score-lock` always ta
 | `notes.update` | `values`; optional `uuids`, `groups`, `start`, `end` |
 | `notes.transpose` | `semitones`; same filters |
 | `notes.shift` | `blick`; same filters |
-| `lyrics.set` / `phonemes.set` | `values` array of exactly the selected note count |
+| `lyrics.set` / `phonemes.set` | Exactly one track; `values` array of the selected note count in **absolute onset order**, including explicit `-` continuation entries |
 | `group.shift` / `group.transpose` | `blick` / `semitones`; optional `groups` names or UUIDs |
 | `group.remove` | explicit `groups` |
 | `automation.set` | `parameter`, `points`: `[[blick,value],...]`; optional `groups`, `mode` |
@@ -39,6 +39,10 @@ Score-changing operations need `--allow-score-changes`. `--score-lock` always ta
 | `json.patch` | `patch` RFC6902 array; add/remove/replace/copy/move/test |
 
 Timing is integer **blicks**, with `705600000` per quarter. Note onsets in `notes.replace` are absolute; `notes.update` values and automation points are group-local. Filtering by `start`/`end` uses absolute note onset. `notes` query uses interval overlap. Group index 0 in offline note rows represents the main group; library references follow it. The live API uses Studio's one-based reference indexing instead.
+
+Positional text operations sort across main/library groups by performed absolute onset, rather than SVP storage order. Multiple selected tracks and simultaneous note onsets are rejected as ambiguous. Use a single voice, or `notes.update` with explicit `uuids` and `references`. Edit reports include `noteOrder` (note/reference IDs and absolute onsets). This ordering contract changed in 0.3.0.dev2; no automatic character-to-note or syllable splitting is performed.
+
+Before rendering new or changed underlay, use `lyrics-plan-schema` and `lyrics-check`; see [lyrics and syllables](lyrics.md). Matching the number of strings is insufficient: the same words can be assigned to the wrong notes.
 
 `start`/`end` filters also accept `b:705600000`, `q:3/2`, `s:12.5`, or `bar:53:1`. The values written to note `onset`/`duration` remain integer group-local blicks. `bar` and `beat` are one-based; beats follow the current meter denominator. Use `time --at` to inspect a position before editing.
 

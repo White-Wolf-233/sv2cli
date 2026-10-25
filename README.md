@@ -29,6 +29,8 @@ validation. Linux supports core tools and the command backend.
 
 ## Common jobs
 
+For new or corrected lyrics, use `sv2cli lyrics-plan-schema`, then `lyrics-check --plan ... --require-full-project`. `render --lyrics-plan ...` rejects incomplete or mismatched underlay before loading the plugin. This checks independent phrase text and exact syllable-to-note assignment, rather than treating note counts, F0 or nonempty audio as proof of correct words. See [lyrics and syllables](docs/lyrics.md). Available in 0.3.0.dev2+.
+
 Switch all selected track/group references to a different SV2 singer:
 
 ```sh

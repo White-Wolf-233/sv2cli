@@ -15,7 +15,7 @@ def _parser():
     p.add_argument("--version",action="version",version=__version__)
     p.add_argument("--profile",default="default",help="Named machine/environment profile")
     sub=p.add_subparsers(dest="command",required=True)
-    sub.add_parser("doctor");sub.add_parser("capabilities");sub.add_parser('recipe-schema')
+    sub.add_parser("doctor");sub.add_parser("capabilities");sub.add_parser('recipe-schema');sub.add_parser('lyrics-plan-schema',help='Describe the independent lyric-plan format and show a non-reviewed example')
     status=sub.add_parser('job-status');status.add_argument('path',help='Stem directory, WAV path or manifest JSON')
     def source(name,help=None):
         s=sub.add_parser(name,help=help);s.add_argument("project");return s
@@ -29,6 +29,9 @@ def _parser():
     n=sub.add_parser("new");write(n);n.add_argument("--name",default="Track 1");n.add_argument("--bpm",type=float,default=120)
     source("inspect");source("validate")
     s=source("preflight");tracks(s);s.add_argument("-o","--output");s.add_argument("--force",action="store_true")
+    s=source('lyrics-check', 'Compare lyric text and exact syllable underlay against an independent plan')
+    s.add_argument('--plan',required=True,help='JSON plan; see lyrics-plan-schema. Times are absolute quarter beats.');s.add_argument('--text-only',action='store_true',help='Diagnose phrase text without claiming per-note mapping')
+    s.add_argument('--require-full-project',action='store_true');s.add_argument('-o','--output');s.add_argument('--force',action='store_true')
     s=source("notes");tracks(s);s.add_argument("--start");s.add_argument("--end");s.add_argument("-o","--output");s.add_argument("--force",action="store_true")
     s=source('groups');tracks(s)
     s=source("repair");write(s,True)
@@ -53,6 +56,7 @@ def _parser():
     r.add_argument("--tail",type=float,default=2);r.add_argument("--channels",type=int,choices=[1,2],default=2)
     r.add_argument("--bit-depth",type=int,choices=[16,24],default=16);r.add_argument("--sample-rate",type=int,default=44100)
     r.add_argument("--single-pass",action="store_true",help='Deprecated compatibility flag: all renders use one pass')
+    r.add_argument('--lyrics-plan',help='Reject incomplete, unreviewed or mismatched full-project lyric plans before loading the plugin')
     a=sub.add_parser("audio-check");a.add_argument("audio");a.add_argument("--expected-seconds",type=float)
     a=sub.add_parser('audio-normalize');a.add_argument('audio');write(a);a.add_argument('--target-peak',type=float,default=-1,help='Sample peak in dBFS, default -1')
     a=source('coverage-check');a.add_argument('audio');tracks(a);a.add_argument('-o','--output');a.add_argument('--force',action='store_true')
@@ -105,7 +109,7 @@ def execute(a):
     editing=cmd in {'repair','edit','voice','mixer','tune','effects'}
     if getattr(a,'in_place',False):a.output=a.project;a.force=True
     if getattr(a,"output",None):
-        for key in ("project","source","recipe"):
+        for key in ("project","source","recipe","plan","lyrics_plan"):
             value=getattr(a,key,None)
             if value:_guard_output(value,a.output,editing and key=='project' and a.force)
         if getattr(a,'audio',None):_guard_output(a.audio,a.output)
@@ -113,6 +117,9 @@ def execute(a):
     if cmd=="capabilities":return {"version":__version__,"capabilities":CAPABILITIES}
     if cmd=='recipe-schema':
         from .recipe import schema
+        return schema()
+    if cmd=='lyrics-plan-schema':
+        from .lyrics import schema
         return schema()
     if cmd=='job-status':
         from .render import job_status
@@ -171,6 +178,15 @@ def execute(a):
     from .timing import describe,position
     if cmd=="inspect":return p.summary()
     if cmd=="validate":return p.validate()
+    if cmd=='lyrics-check':
+        from .lyrics import audit
+        import hashlib
+        if not p.validate()['valid']:raise SVError('Invalid project; run validate first','invalid_project')
+        report=audit(p.data,read_json(a.plan),a.text_only,a.require_full_project)
+        report.update(valid=report['planMatches'],projectSHA256=hashlib.sha256(Path(a.project).read_bytes()).hexdigest(),
+                      planSHA256=hashlib.sha256(Path(a.plan).read_bytes()).hexdigest())
+        if a.output:write_json(a.output,report,a.force)
+        return report
     if cmd=='preflight':
         from .preflight import check
         report=check(p,a.track)
@@ -226,8 +242,19 @@ def execute(a):
         if not report["validation"]["valid"]:raise SVError(f"Conservative repair cannot fix: {report['validation']['issues']}","invalid_project")
         report.update(_save(q,a));return report
     if cmd=="render":
+        lyric_report=None
+        if a.lyrics_plan:
+            from .lyrics import audit
+            import hashlib
+            lyric_report=audit(p.data,read_json(a.lyrics_plan),require_full=True)
+            if not lyric_report['planMatches'] or not lyric_report['sourceReviewDeclared']:
+                raise SVError('Lyric plan is incomplete, mismatched or not declared reviewed; run lyrics-check --require-full-project for details','lyric_plan_mismatch')
+            lyric_report.update(projectSHA256=hashlib.sha256(Path(a.project).read_bytes()).hexdigest(),
+                                planSHA256=hashlib.sha256(Path(a.lyrics_plan).read_bytes()).hexdigest())
         from .render import render
-        return render(a.project,a.output,a.profile,a.backend,a.track,a.stems,a.timeout,a.warmup,a.attempts,a.tail,a.force,a.channels,a.bit_depth,a.sample_rate,a.single_pass,resume=a.resume,entry_policy=a.entry_policy,entry_tolerance=a.entry_tolerance,entry_landmark=a.entry_landmark,target_peak=a.target_peak,silence_dbfs=a.silence_dbfs,max_silent_seconds=a.max_silent_seconds)
+        result=render(a.project,a.output,a.profile,a.backend,a.track,a.stems,a.timeout,a.warmup,a.attempts,a.tail,a.force,a.channels,a.bit_depth,a.sample_rate,a.single_pass,resume=a.resume,entry_policy=a.entry_policy,entry_tolerance=a.entry_tolerance,entry_landmark=a.entry_landmark,target_peak=a.target_peak,silence_dbfs=a.silence_dbfs,max_silent_seconds=a.max_silent_seconds)
+        if lyric_report is not None:result['lyricPlanVerification']=lyric_report
+        return result
     if cmd=="edit":
         operations=read_json(a.recipe);q=apply(p,operations,a.allow_score_changes,a.score_lock)
         report=difference(p,q)
