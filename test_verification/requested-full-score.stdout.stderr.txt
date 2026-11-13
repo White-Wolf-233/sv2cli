@@ -1,0 +1,4 @@
+usage: sv2cli [-h] [--version] [--profile PROFILE]
+              {doctor,capabilities,recipe-schema,lyrics-plan-schema,job-status,new,inspect,validate,preflight,lyrics-check,notes,groups,repair,diff,edit,voice,mixer,voices,config,convert,render,audio-check,audio-normalize,loudness-check,full-score-text,coverage-check,tune,effects,time,timing-check,audio-shift,wave-align,entry-check,batch,live}
+              ...
+sv2cli: error: unrecognized arguments: test_verification/helloworld.svp

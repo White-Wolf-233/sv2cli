@@ -1,0 +1,11 @@
+usage: sv2cli audio-check [-h] [--expected-seconds EXPECTED_SECONDS] [--lufs]
+                          audio
+
+positional arguments:
+  audio
+
+options:
+  -h, --help            show this help message and exit
+  --expected-seconds EXPECTED_SECONDS
+  --lufs                Compute BS.1770-4 integrated LUFS and approximate true
+                        peak (slower)

@@ -57,8 +57,10 @@ def _parser():
     r.add_argument("--bit-depth",type=int,choices=[16,24],default=16);r.add_argument("--sample-rate",type=int,default=44100)
     r.add_argument("--single-pass",action="store_true",help='Deprecated compatibility flag: all renders use one pass')
     r.add_argument('--lyrics-plan',help='Reject incomplete, unreviewed or mismatched full-project lyric plans before loading the plugin')
-    a=sub.add_parser("audio-check");a.add_argument("audio");a.add_argument("--expected-seconds",type=float)
+    a=sub.add_parser("audio-check");a.add_argument("audio");a.add_argument("--expected-seconds",type=float);a.add_argument("--lufs",action="store_true",help="Compute BS.1770-4 integrated LUFS and approximate true peak (slower)")
     a=sub.add_parser('audio-normalize');a.add_argument('audio');write(a);a.add_argument('--target-peak',type=float,default=-1,help='Sample peak in dBFS, default -1')
+    a=sub.add_parser('loudness-check',help='BS.1770-4 integrated LUFS, short-term bins and approximate true peak');a.add_argument('audio');a.add_argument('-o','--output');a.add_argument('--force',action='store_true')
+    a=source('full-score-text',help='Export full project as structured text: section → bar → note with lyrics and intervals');a.add_argument('-o','--output',required=True);a.add_argument('--force',action='store_true')
     a=source('coverage-check');a.add_argument('audio');tracks(a);a.add_argument('-o','--output');a.add_argument('--force',action='store_true')
     a.add_argument('--silence-dbfs',type=float,default=-80);a.add_argument('--max-silent-seconds',type=float,default=.5)
     ng=r.add_mutually_exclusive_group();ng.add_argument('--normalize',dest='target_peak',action='store_const',const=-1)
@@ -137,7 +139,36 @@ def execute(a):
         return normalize(a.audio,a.output,a.target_peak,a.force)
     if cmd=="audio-check":
         from .audio import check
-        return check(a.audio,a.expected_seconds)
+        result=check(a.audio,a.expected_seconds)
+        if getattr(a,'lufs',False):
+            from .timing import read_pcm
+            from .loudness import integrated_lufs,true_peak_dbfs
+            audio,rate,_=read_pcm(a.audio)
+            lufs=integrated_lufs(audio,rate)
+            tp=true_peak_dbfs(audio)
+            result['integratedLUFS']=round(lufs,1) if lufs is not None else None
+            result['truePeakDBFS']=tp
+            result['truePeakNote']='4x linear oversample; within ~0.5 dB of BS.1770 Annex 2'
+        return result
+    if cmd=='loudness-check':
+        from .timing import read_pcm
+        from .loudness import integrated_lufs,shortterm_lufs_bins,true_peak_dbfs
+        import math
+        audio,rate,bits=read_pcm(a.audio)
+        lufs=integrated_lufs(audio,rate)
+        st_bins=shortterm_lufs_bins(audio,rate)
+        tp=true_peak_dbfs(audio)
+        result={'path':str(a.audio),'integratedLUFS':round(lufs,1) if lufs is not None else None,
+                'truePeakDBFS':tp,'truePeakNote':'4x linear oversample; within ~0.5 dB of BS.1770 Annex 2',
+                'shortTermBins':st_bins,'sampleRate':rate,'bitDepth':bits,'channels':audio.shape[0]}
+        if a.output:write_json(a.output,result,a.force)
+        return result
+    if cmd=='full-score-text':
+        p=Project.load(a.project)
+        from .score_text import export
+        result=export(p)
+        write_json(a.output,result,a.force)
+        return {'output':a.output,'tracks':len(result['tracks'])}
     if cmd=="convert":
         from .convert import midi_import,midi_export,csv_import,csv_export
         if a.format=="midi-in":

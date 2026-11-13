@@ -1,0 +1,233 @@
+{
+  "supportedCLIAllPassed": true,
+  "requestedCommandSyntaxPassed": {
+    "inspectFullScoreText": false,
+    "audioCheckLoudnessCheck": false,
+    "audioCheckLUFS": true
+  },
+  "checks": {
+    "localCheckoutImported": true,
+    "svpValid": true,
+    "singleTrackFourBars": true,
+    "tempo120AndMeter4_4": true,
+    "scoreEndsAt16QuarterBeats": true,
+    "scoreFieldsPresent": true,
+    "melodyCorrect": true,
+    "lyricsCorrect": true,
+    "intervalsCorrect": true,
+    "wavFormatCorrect": true,
+    "sine440HzAndIdenticalStereo": true,
+    "supportedCommandsExitZero": true,
+    "loudnessFieldsPresent": true,
+    "reasonableLUFS": true,
+    "reasonablePeak": true,
+    "shortTermBinsPresent": true,
+    "audioCheckLUFSMatches": true,
+    "sourceFilesUnchanged": true
+  },
+  "integratedLUFS": -3.2,
+  "truePeakDBFS": -2.5,
+  "fixture": {
+    "wav": {
+      "sampleRate": 44100,
+      "channels": 2,
+      "frames": 88200,
+      "bitDepth": 16,
+      "durationSeconds": 2.0
+    },
+    "frequencyHz": 440.0,
+    "peakAmplitudePerChannel": 0.75,
+    "quarterBeatOnsets": [
+      0,
+      2,
+      4,
+      8,
+      12
+    ],
+    "quarterBeatDurations": [
+      2,
+      2,
+      4,
+      4,
+      4
+    ],
+    "lyrics": [
+      "你",
+      "好",
+      "世",
+      "界",
+      "+"
+    ]
+  },
+  "environment": {
+    "python": "C:\\Users\\ykx20\\scoop\\apps\\python312\\current\\python.exe",
+    "packagePath": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\src\\sv2cli\\__init__.py",
+    "numpy": "2.2.6",
+    "scipy": "1.18.0",
+    "PYTHONPATH": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\src;C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\test_verification\\_deps"
+  },
+  "sourceSHA256": {
+    "src\\sv2cli\\cli.py": "6476bda2a8bb41c2a1ddc0dc713648e2118f65271f775ee701ee52390b4ff2e9",
+    "src\\sv2cli\\score_text.py": "d436bec8eca4d32779789c12e868b81d3319b03a894268f724b6e9c5d4a598f4",
+    "src\\sv2cli\\loudness.py": "08ea6777d614634d0935c60070449e5aa45e74065b43e047c8e76f1a9c545e79"
+  },
+  "commands": [
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "version.txt",
+      "stderr": "version.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "doctor"
+      ],
+      "exitCode": 2,
+      "stdout": "doctor.stdout.txt",
+      "stderr": "doctor.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "capabilities"
+      ],
+      "exitCode": 0,
+      "stdout": "capabilities.json",
+      "stderr": "capabilities.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "full-score-text",
+        "--help"
+      ],
+      "exitCode": 0,
+      "stdout": "full-score-help.txt",
+      "stderr": "full-score-help.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "loudness-check",
+        "--help"
+      ],
+      "exitCode": 0,
+      "stdout": "loudness-help.txt",
+      "stderr": "loudness-help.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "audio-check",
+        "--help"
+      ],
+      "exitCode": 0,
+      "stdout": "audio-check-help.txt",
+      "stderr": "audio-check-help.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "inspect",
+        "full-score-text",
+        "test_verification/helloworld.svp"
+      ],
+      "exitCode": 2,
+      "stdout": "requested-full-score.stdout.txt",
+      "stderr": "requested-full-score.stdout.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "audio-check",
+        "loudness-check",
+        "test_verification/test.wav"
+      ],
+      "exitCode": 2,
+      "stdout": "requested-loudness.stdout.txt",
+      "stderr": "requested-loudness.stdout.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "full-score-text",
+        "test_verification/helloworld.svp",
+        "-o",
+        "test_verification/full-score-output.json",
+        "--force"
+      ],
+      "exitCode": 0,
+      "stdout": "full-score-stdout.json",
+      "stderr": "full-score-stdout.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "loudness-check",
+        "test_verification/test.wav"
+      ],
+      "exitCode": 0,
+      "stdout": "loudness-output.json",
+      "stderr": "loudness-output.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "audio-check",
+        "--lufs",
+        "test_verification/test.wav"
+      ],
+      "exitCode": 0,
+      "stdout": "audio-check-lufs-output.json",
+      "stderr": "audio-check-lufs-output.stderr.txt"
+    },
+    {
+      "command": [
+        "python",
+        "-m",
+        "sv2cli",
+        "validate",
+        "test_verification/helloworld.svp"
+      ],
+      "exitCode": 0,
+      "stdout": "svp-validation.json",
+      "stderr": "svp-validation.stderr.txt"
+    }
+  ],
+  "limitations": [
+    "Requested nested full-score-text and loudness-check invocations fail with argparse exit 2.",
+    "full-score-text writes the score to -o; stdout contains only an output/tracks receipt.",
+    "Final + continues the previous syllable, preserving the four Chinese lyric characters.",
+    "LUFS depends on amplitude and channel count; this fixture uses 0.75 peak per channel.",
+    "For this two-second clip, shortTermBins uses a shortened window rather than a full three-second window.",
+    "truePeakDBFS is the implementation linear-interpolation estimate; this does not certify BS.1770 compliance.",
+    "No Synthesizer V application, plugin, or voice library was installed or loaded.",
+    "Ancillary doctor failed with access denied on the protected Dreamtonics app-data directory. Its raw stderr is saved in doctor.stderr.txt; this does not affect the offline feature checks."
+  ]
+}

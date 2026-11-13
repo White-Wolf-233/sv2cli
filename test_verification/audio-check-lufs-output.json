@@ -1,0 +1,24 @@
+{
+  "path": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\test_verification\\test.wav",
+  "valid": true,
+  "failures": [],
+  "sampleRate": 44100,
+  "channels": 2,
+  "bitDepth": 16,
+  "encoding": "PCM",
+  "frames": 88200,
+  "durationSeconds": 2.0,
+  "peak": 0.749969482421875,
+  "rms": 0.5303140284390048,
+  "peakDBFS": -2.499128169110894,
+  "rmsDBFS": -5.509337686062975,
+  "nonzeroRatio": 0.999546485260771,
+  "clippedRatio": 0.0,
+  "activeSeconds": [
+    0,
+    1
+  ],
+  "integratedLUFS": -3.2,
+  "truePeakDBFS": -2.5,
+  "truePeakNote": "4x linear oversample; within ~0.5 dB of BS.1770 Annex 2"
+}

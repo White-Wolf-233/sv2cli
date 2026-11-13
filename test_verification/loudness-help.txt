@@ -1,0 +1,9 @@
+usage: sv2cli loudness-check [-h] [-o OUTPUT] [--force] audio
+
+positional arguments:
+  audio
+
+options:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+  --force

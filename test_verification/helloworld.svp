@@ -1,0 +1,171 @@
+{
+  "version": 196,
+  "uuid": "d5216d34-d52e-40b6-950e-982808ceb839",
+  "time": {
+    "meter": [
+      {
+        "index": 0,
+        "numerator": 4,
+        "denominator": 4
+      }
+    ],
+    "tempo": [
+      {
+        "position": 0,
+        "bpm": 120
+      }
+    ],
+    "startTimeSeconds": 0
+  },
+  "tracks": [
+    {
+      "name": "Hello World",
+      "dispColor": "ff7db235",
+      "dispOrder": 0,
+      "renderEnabled": true,
+      "mixer": {
+        "gainDecibel": 0,
+        "pan": 0,
+        "mute": false,
+        "solo": false,
+        "fxParams": {}
+      },
+      "mainGroup": {
+        "name": "main",
+        "uuid": "19b67575-1fd4-43b5-9b8a-05353346a077",
+        "notes": [
+          {
+            "pitch": 60,
+            "lyrics": "你",
+            "onset": 0,
+            "duration": 1411200000,
+            "uuid": "f70c81c96d814ee4",
+            "musicalType": "singing",
+            "phonemes": "",
+            "attributes": {}
+          },
+          {
+            "pitch": 62,
+            "lyrics": "好",
+            "onset": 1411200000,
+            "duration": 1411200000,
+            "uuid": "92c215f3727e4c1c",
+            "musicalType": "singing",
+            "phonemes": "",
+            "attributes": {}
+          },
+          {
+            "pitch": 64,
+            "lyrics": "世",
+            "onset": 2822400000,
+            "duration": 2822400000,
+            "uuid": "df104b4ed8d346e5",
+            "musicalType": "singing",
+            "phonemes": "",
+            "attributes": {}
+          },
+          {
+            "pitch": 65,
+            "lyrics": "界",
+            "onset": 5644800000,
+            "duration": 2822400000,
+            "uuid": "01f08fe7bef34e36",
+            "musicalType": "singing",
+            "phonemes": "",
+            "attributes": {}
+          },
+          {
+            "pitch": 67,
+            "lyrics": "+",
+            "onset": 8467200000,
+            "duration": 2822400000,
+            "uuid": "977d80df2f804b41",
+            "musicalType": "singing",
+            "phonemes": "",
+            "attributes": {}
+          }
+        ],
+        "parameters": {
+          "breathiness": {
+            "mode": "cubic",
+            "points": []
+          },
+          "gender": {
+            "mode": "cubic",
+            "points": []
+          },
+          "loudness": {
+            "mode": "cubic",
+            "points": []
+          },
+          "mouthOpening": {
+            "mode": "cubic",
+            "points": []
+          },
+          "pitchDelta": {
+            "mode": "cubic",
+            "points": []
+          },
+          "tension": {
+            "mode": "cubic",
+            "points": []
+          },
+          "toneShift": {
+            "mode": "cubic",
+            "points": []
+          },
+          "vibratoEnv": {
+            "mode": "cubic",
+            "points": []
+          },
+          "voicing": {
+            "mode": "cubic",
+            "points": []
+          }
+        },
+        "vocalModes": {},
+        "pitchControls": []
+      },
+      "mainRef": {
+        "uuid": "1426b2ac-e952-4d7e-8bed-f4080e1fe6d4",
+        "groupID": "19b67575-1fd4-43b5-9b8a-05353346a077",
+        "blickOffset": 0,
+        "pitchOffset": 0,
+        "blickAbsoluteBegin": 0,
+        "blickAbsoluteEnd": 11289600000,
+        "mute": false,
+        "isInstrumental": false,
+        "database": {
+          "name": "",
+          "language": "",
+          "phoneset": "",
+          "languageOverride": "",
+          "phonesetOverride": "",
+          "backendType": "",
+          "version": "-2"
+        },
+        "voice": {
+          "vocalModeInherited": true
+        },
+        "timestampLMR": 0,
+        "timestampLRSR": 0
+      },
+      "groups": []
+    }
+  ],
+  "library": [],
+  "renderConfig": {
+    "destination": "",
+    "filename": "render",
+    "numChannels": 2,
+    "sampleRate": 44100,
+    "bitDepth": 16,
+    "aspirationFormat": "noAspiration",
+    "exportMixDown": true,
+    "exportPitch": false,
+    "bypassGain": false,
+    "bypassPan": false,
+    "bypassEffects": false
+  },
+  "projectMixer": {}
+}

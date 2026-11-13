@@ -1,0 +1,114 @@
+{
+  "tracks": [
+    {
+      "track": 1,
+      "name": "Hello World",
+      "sections": [
+        {
+          "label": "bars 1–4",
+          "bars": [
+            {
+              "bar": 1,
+              "notes": [
+                {
+                  "beat": 1.0,
+                  "onset_q": 0.0,
+                  "duration_q": 2.0,
+                  "pitch": 60,
+                  "midi": 60,
+                  "lyrics": "你",
+                  "phonemes": "",
+                  "musicalType": "singing",
+                  "interval_from_prev": null
+                },
+                {
+                  "beat": 3.0,
+                  "onset_q": 2.0,
+                  "duration_q": 2.0,
+                  "pitch": 62,
+                  "midi": 62,
+                  "lyrics": "好",
+                  "phonemes": "",
+                  "musicalType": "singing",
+                  "interval_from_prev": {
+                    "semitones": 2,
+                    "name": "M2",
+                    "octaves": 0,
+                    "direction": "up",
+                    "dissonant": true
+                  }
+                }
+              ]
+            },
+            {
+              "bar": 2,
+              "notes": [
+                {
+                  "beat": 1.0,
+                  "onset_q": 4.0,
+                  "duration_q": 4.0,
+                  "pitch": 64,
+                  "midi": 64,
+                  "lyrics": "世",
+                  "phonemes": "",
+                  "musicalType": "singing",
+                  "interval_from_prev": {
+                    "semitones": 2,
+                    "name": "M2",
+                    "octaves": 0,
+                    "direction": "up",
+                    "dissonant": true
+                  }
+                }
+              ]
+            },
+            {
+              "bar": 3,
+              "notes": [
+                {
+                  "beat": 1.0,
+                  "onset_q": 8.0,
+                  "duration_q": 4.0,
+                  "pitch": 65,
+                  "midi": 65,
+                  "lyrics": "界",
+                  "phonemes": "",
+                  "musicalType": "singing",
+                  "interval_from_prev": {
+                    "semitones": 1,
+                    "name": "m2",
+                    "octaves": 0,
+                    "direction": "up",
+                    "dissonant": true
+                  }
+                }
+              ]
+            },
+            {
+              "bar": 4,
+              "notes": [
+                {
+                  "beat": 1.0,
+                  "onset_q": 12.0,
+                  "duration_q": 4.0,
+                  "pitch": 67,
+                  "midi": 67,
+                  "lyrics": "+",
+                  "phonemes": "",
+                  "musicalType": "singing",
+                  "interval_from_prev": {
+                    "semitones": 2,
+                    "name": "M2",
+                    "octaves": 0,
+                    "direction": "up",
+                    "dissonant": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
