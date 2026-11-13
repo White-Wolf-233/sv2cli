@@ -1,6 +1,6 @@
 {
   "version": 196,
-  "uuid": "d5216d34-d52e-40b6-950e-982808ceb839",
+  "uuid": "eba5502d-e0f7-42e5-a408-a4f794594178",
   "time": {
     "meter": [
       {
@@ -32,14 +32,14 @@
       },
       "mainGroup": {
         "name": "main",
-        "uuid": "19b67575-1fd4-43b5-9b8a-05353346a077",
+        "uuid": "1fe0e60d-6269-4c7e-8204-7b37334d086c",
         "notes": [
           {
             "pitch": 60,
             "lyrics": "你",
             "onset": 0,
             "duration": 1411200000,
-            "uuid": "f70c81c96d814ee4",
+            "uuid": "ec0bf4a3b6c64930",
             "musicalType": "singing",
             "phonemes": "",
             "attributes": {}
@@ -49,7 +49,7 @@
             "lyrics": "好",
             "onset": 1411200000,
             "duration": 1411200000,
-            "uuid": "92c215f3727e4c1c",
+            "uuid": "feb261a08f384b6b",
             "musicalType": "singing",
             "phonemes": "",
             "attributes": {}
@@ -59,7 +59,7 @@
             "lyrics": "世",
             "onset": 2822400000,
             "duration": 2822400000,
-            "uuid": "df104b4ed8d346e5",
+            "uuid": "2d27d9f99aa442c0",
             "musicalType": "singing",
             "phonemes": "",
             "attributes": {}
@@ -69,17 +69,17 @@
             "lyrics": "界",
             "onset": 5644800000,
             "duration": 2822400000,
-            "uuid": "01f08fe7bef34e36",
+            "uuid": "348bda58b8a643bc",
             "musicalType": "singing",
             "phonemes": "",
             "attributes": {}
           },
           {
             "pitch": 67,
-            "lyrics": "+",
+            "lyrics": "-",
             "onset": 8467200000,
             "duration": 2822400000,
-            "uuid": "977d80df2f804b41",
+            "uuid": "4eb0420cb60d4495",
             "musicalType": "singing",
             "phonemes": "",
             "attributes": {}
@@ -127,12 +127,12 @@
         "pitchControls": []
       },
       "mainRef": {
-        "uuid": "1426b2ac-e952-4d7e-8bed-f4080e1fe6d4",
-        "groupID": "19b67575-1fd4-43b5-9b8a-05353346a077",
+        "uuid": "6cad6ea8-a566-46cb-ab95-3e29170383df",
+        "groupID": "1fe0e60d-6269-4c7e-8204-7b37334d086c",
         "blickOffset": 0,
         "pitchOffset": 0,
         "blickAbsoluteBegin": 0,
-        "blickAbsoluteEnd": 11289600000,
+        "blickAbsoluteEnd": -1,
         "mute": false,
         "isInstrumental": false,
         "database": {

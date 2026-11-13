@@ -4,7 +4,7 @@ import wave
 import numpy as np
 import pytest
 from sv2cli.errors import SVError
-from sv2cli.project import new_project, QUARTER
+from sv2cli.project import Project, new_project, QUARTER
 from sv2cli.edit import apply
 from sv2cli.pcm import encode
 from sv2cli.render import render
@@ -87,14 +87,20 @@ def test_native_acceptance_gate_runs_before_final_output_and_records_resume_poli
     monkeypatch.setattr('sv2cli.render.profile',lambda name:{'plugin':str(plugin),'native_host':str(plugin)})
     def worker(command,timeout,log):
         job=json.loads(Path(command[-1]).read_text())
+        snapshot = Project.load(job['project'])
+        assert snapshot.data['tracks'][0]['mainRef']['blickAbsoluteEnd'] == -1
         delayed(Path(job['work'])/'render.wav',rate=22050,duration=job['duration'])
     monkeypatch.setattr('sv2cli.render._worker',worker)
     target=tmp_path/'final.wav'
     with pytest.raises(SVError,match='First waveform entry'):
-        render(src,target,sample_rate=22050,bit_depth=24)
+        render(src,target,sample_rate=22050,bit_depth=24,entry_policy='check')
     assert not target.exists()
     failed=json.loads(target.with_suffix('.wav.json').read_text())
     assert failed['status']=='failed' and failed['error']['code']=='entry_timing_mismatch'
+    reported = render(src, tmp_path/'reported.wav', sample_rate=22050, bit_depth=24)
+    assert reported['entryPolicy'] == 'report'
+    assert reported['audio'][0]['entryTiming']['status'] == 'outside_tolerance'
+    assert (tmp_path/'reported.wav').exists()
     result=render(src,target,sample_rate=22050,bit_depth=24,force=True,entry_policy='align')
     assert result['firstWaveformEntryVerified'] and not result['allNoteOnsetsVerified']
     assert result['audio'][0]['entryTiming']['advanceSeconds']==pytest.approx(.14,abs=.003)

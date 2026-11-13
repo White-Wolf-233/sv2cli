@@ -46,6 +46,12 @@ def profile(name="default"):
     if os.environ.get("SV2CLI_PLUGIN"):
         p["plugin"]=os.environ["SV2CLI_PLUGIN"]
     if os.environ.get('SV2CLI_NATIVE_HOST'):p['native_host']=os.environ['SV2CLI_NATIVE_HOST']
+    if not p.get('native_host'):
+        filename = 'sv2cli_transport.dll' if sys.platform == 'win32' else 'libsv2cli_transport.dylib'
+        checkout = Path(__file__).resolve().parents[2]
+        candidates = [checkout/'native'/filename, checkout/'native/build/Release'/filename,
+                      checkout/'native/build'/filename, checkout.parent/'runtime'/filename]
+        p['native_host'] = next((str(path) for path in candidates if path.is_file()), None)
     p.setdefault("plugin",next((str(x) for x in plugin_candidates() if x.exists()),None))
     p.setdefault("data_roots",[str(x) for x in data_roots() if x.exists()])
     return p

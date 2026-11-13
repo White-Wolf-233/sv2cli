@@ -79,7 +79,7 @@ def render(source, output, profile_name="default", backend="vst3", tracks=None, 
     cfg=profile(profile_name)
     if backend not in {"vst3","command"}:raise SVError("Backend must be vst3 or command")
     from .project import finite,numeric
-    entry_policy=entry_policy or ('check' if backend=='vst3' else 'report')
+    entry_policy=entry_policy or 'report'
     finite(entry_tolerance,'entry tolerance')
     for value,label in [(timeout,'timeout'),(warmup,'warmup'),(tail,'tail')]:finite(value,label)
     numeric(silence_dbfs,'silence dBFS',-150,-20);numeric(max_silent_seconds,'maximum silent seconds',.02,60)
@@ -189,6 +189,13 @@ def _tasks(original,source,tasks,manifest,manifest_path,prior,reports,work_root,
         work=work_root/f"task-{len(reports)+1}";work.mkdir()
         project=original.copy()
         project.data["tracks"]=[t for i,t in project.tracks() if i in indices]
+        if backend == 'vst3':
+            for _, track in project.tracks():
+                ref = track.get('mainRef')
+                if ref is not None:
+                    notes = track.get('mainGroup', {}).get('notes', [])
+                    begin = ref.get('blickOffset', 0) + min((n['onset'] for n in notes), default=0)
+                    ref.update(blickAbsoluteBegin=min(0, begin), blickAbsoluteEnd=-1)
         # A stem needs only the selected tracks' library references. Loading
         # orphaned groups keeps unrelated native synthesis/cache state alive.
         # The user's source library remains untouched.

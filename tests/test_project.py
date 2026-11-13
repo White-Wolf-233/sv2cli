@@ -15,7 +15,8 @@ def test_absolute_offsets(project):
     t=project.data["tracks"][0];t["mainRef"]["blickOffset"]=7*QUARTER
     project.update_ranges()
     assert project.notes()[0]["onset"]==7*QUARTER
-    assert t["mainRef"]["blickAbsoluteEnd"]==9*QUARTER
+    assert t["mainRef"]["blickAbsoluteBegin"]==0
+    assert t["mainRef"]["blickAbsoluteEnd"]==-1
     assert project.validate()["valid"]
 
 def test_conservative_repair(project):

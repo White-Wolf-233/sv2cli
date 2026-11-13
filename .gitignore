@@ -13,3 +13,4 @@ local-validation/
 *.vstpreset
 *.bin
 .sv2cli-jobs/
+/native/sv2cli_transport.dll

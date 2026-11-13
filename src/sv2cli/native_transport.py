@@ -12,7 +12,7 @@ from .plugin_state import read_project, replace_project
 def library_path(config):
     value=os.environ.get('SV2CLI_NATIVE_HOST') or config.get('native_host')
     if not value or not Path(value).expanduser().is_file():
-        raise SVError('Build native/ and set SV2CLI_NATIVE_HOST or profile.native_host to the transport library. The drifting DawDreamer path is not used as a fallback.', 'native_host_missing')
+        raise SVError('Native VST3 host missing. Build native/ or set SV2CLI_NATIVE_HOST or profile.native_host to the transport library.', 'native_host_missing')
     return str(Path(value).expanduser().resolve())
 
 

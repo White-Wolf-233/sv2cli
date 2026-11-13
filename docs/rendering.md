@@ -8,7 +8,9 @@ sv2cli render song.svp --stems -o stems --bit-depth 24
 
 The native backend uses the [direct VST3 transport](../native/README.md) to load
 the installed **Synthesizer V Studio 2 Plugin.vst3**. Build `native/` and set
-`SV2CLI_NATIVE_HOST` or profile `native_host` to its shared library. It obtains
+`SV2CLI_NATIVE_HOST` or profile `native_host` to its shared library. Source
+checkouts also discover a library in `native/`, `native/build/Release/` or
+`native/build/`. Portable packages discover their adjacent `runtime/` library. It obtains
 the public JUCE state, replaces only the project envelope and preserves opaque
 bytes. Python verifies the loaded score before allowing playback. No engine
 binary inspection, engine patching or UI automation is used.
@@ -41,14 +43,15 @@ render fails and preserves evidence. The code never rerenders to find a lucky
 acceptable pass. Fixed-count repeated runs in validation retain every result
 and are not a production acceptance strategy.
 
-Readiness does not establish actual entry timing. Native renders additionally
-default to `--entry-policy check`, rejecting an unresolved first isolated
-waveform entry or a deviation over `--entry-tolerance 0.03` seconds before the
-final output is accepted. Use `--stems` for multiple tracks. An explicitly
-unchecked mix requires `--entry-policy report`; a reviewed whole-recording
-offset can be corrected with `--entry-policy align`. Raw audio and timing
-evidence remain in the job directory. This verifies only a waveform energy
-landmark, not every note or phoneme. See [entry alignment](wave-align.md).
+Native renders measure the first isolated waveform entry and default to
+`--entry-policy report`. The timing report accompanies the exported audio.
+Breaths and consonants can begin before the written note. Use
+`--entry-policy check` to enforce `--entry-tolerance 0.03`, or
+`--entry-policy align` to translate a reviewed whole-recording offset.
+Use `--stems` to measure individual tracks. See [entry alignment](wave-align.md).
+
+Main groups use the plugin's open-ended reference range. Render snapshots also
+normalize ranges written by older CLI versions, which could silence new tracks.
 
 For a word with an early unvoiced consonant, choose `--entry-landmark voiced`
 explicitly after inspection. It checks low-band voicing energy and retains the

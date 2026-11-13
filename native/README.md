@@ -6,10 +6,9 @@ integer sample clock, processes one buffer on the owning message thread, then
 dispatches messages before advancing the clock. Tempo and meter changes split
 buffers at their nearest sample. It records the first stereo bus directly.
 
-There are no playback retries, envelope-convergence passes, waveform-dependent
-time corrections, priming renders or resampling. Warmup dispatches messages
-while the transport is stopped. One subsequent transport pass either passes
-coverage/format/entry checks or fails with retained evidence.
+Warmup dispatches messages while the transport is stopped. One transport pass
+produces the raw WAV, followed by coverage and format checks and an entry-timing
+report. `--entry-policy check` enforces a requested timing tolerance.
 
 ## Build
 

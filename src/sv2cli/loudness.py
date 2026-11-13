@@ -33,9 +33,9 @@ def _kweight_coeffs(stage, fs):
         Q  = 0.5003270373238773
         K  = math.tan(math.pi * f0 / fs)
         a0 = 1 + K / Q + K * K
-        b0 = 1.0 / a0
-        b1 = -2.0 / a0
-        b2 = 1.0 / a0
+        b0 = 1.0
+        b1 = -2.0
+        b2 = 1.0
         a1 = 2.0 * (K * K - 1) / a0
         a2 = (1 - K / Q + K * K) / a0
     return (b0, b1, b2), (1.0, a1, a2)
@@ -81,6 +81,8 @@ def integrated_lufs(audio, rate):
     """
     np = _numpy()
     n = audio.shape[1]
+    if n == 0:
+        return None
     z = _kweighted(audio, rate)
 
     block = int(0.4 * rate)
@@ -119,6 +121,8 @@ def shortterm_lufs_bins(audio, rate):
     """
     np = _numpy()
     n = audio.shape[1]
+    if n == 0:
+        return []
     z = _kweighted(audio, rate)
     block = int(3.0 * rate)
     hop   = rate
@@ -138,24 +142,21 @@ def shortterm_lufs_bins(audio, rate):
 
 def true_peak_dbfs(audio):
     """
-    Approximate true peak via 4x linear oversampling.
+    Estimate true peak with a 4x, 129-tap windowed-sinc reconstruction filter.
     Returns dBTP or None for silent audio.
-    Note: proper true peak requires the BS.1770 Annex 2 FIR;
-    this estimate is within ~0.5 dB for typical vocal material.
+    Includes the filter tails and every original sample, including the final one.
     """
     np = _numpy()
+    if audio.shape[1] == 0:
+        return None
+    offsets = np.arange(-64, 65, dtype=np.float64)
+    kernel = np.sinc(offsets / 4.0) * np.kaiser(len(offsets), 8.6)
     peak = 0.0
     for ch in range(audio.shape[0]):
         x = audio[ch].astype(np.float64)
-        n = len(x)
-        # 4x linear interp between consecutive samples
-        t = np.arange(0, n - 1, 0.25)
-        idx = t.astype(int)
-        frac = t - idx
-        interp = x[idx] * (1 - frac) + x[np.minimum(idx + 1, n - 1)] * frac
-        pk = float(np.max(np.abs(interp)))
-        if pk > peak:
-            peak = pk
+        for phase in range(4):
+            reconstructed = np.convolve(x, kernel[phase::4], mode='full')
+            peak = max(peak, float(np.max(np.abs(reconstructed))))
     if peak < 1e-12:
         return None
     return round(20 * math.log10(peak), 2)

@@ -1,0 +1,26 @@
+{
+  "version": "0.3.0.dev2",
+  "pythonExecutable": "C:\\Users\\ykx20\\scoop\\apps\\python312\\current\\python.exe",
+  "packagePath": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\src\\sv2cli",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.10",
+  "profile": "default",
+  "configPath": "C:\\Users\\ykx20\\AppData\\Roaming\\sv2cli\\config.json",
+  "plugin": "C:\\Program Files\\Common Files\\VST3\\Synthesizer V Studio 2 Plugin.vst3",
+  "pluginExists": true,
+  "nativeHost": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\native\\sv2cli_transport.dll",
+  "nativeHostExists": true,
+  "dependencies": {
+    "dawdreamer": true,
+    "numpy": true,
+    "mido": true
+  },
+  "ffmpeg": "C:\\Users\\ykx20\\scoop\\shims\\ffmpeg.EXE",
+  "dataRoots": [
+    "C:\\Users\\ykx20\\AppData\\Roaming\\Dreamtonics\\Synthesizer V Studio 2"
+  ],
+  "offlineProjectTools": true,
+  "renderReadyToAttempt": true,
+  "renderVerified": false,
+  "note": "doctor detects prerequisites only; native rendering uses a direct single-pass VST3 sample clock. Windows is locally validated; macOS requires native plugin validation."
+}

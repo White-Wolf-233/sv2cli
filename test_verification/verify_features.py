@@ -38,7 +38,7 @@ def run(args, name):
 sources = [ROOT / 'src/sv2cli' / n for n in ['cli.py', 'score_text.py', 'loudness.py']]
 before = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
 pitches = [60, 62, 64, 65, 67]
-lyrics = ['\u4f60', '\u597d', '\u4e16', '\u754c', '+']
+lyrics = ['\u4f60', '\u597d', '\u4e16', '\u754c', '-']
 onsets = [0, 2, 4, 8, 12]
 durations = [2, 2, 4, 4, 4]
 p = apply(new_project('Hello World', 120), [{'op': 'notes.replace', 'tracks': ['#1'], 'notes': [
@@ -101,14 +101,13 @@ report = {
     'environment': {'python': sys.executable, 'packagePath': sv2cli.__file__, 'numpy': np.__version__, 'scipy': scipy.__version__, 'PYTHONPATH': os.environ['PYTHONPATH']},
     'sourceSHA256': before, 'commands': commands,
     'limitations': [
-        'Ancillary doctor could not read the protected Dreamtonics app-data directory in this sandbox; its failure is saved separately.',
         'Requested nested full-score-text and loudness-check invocations fail with argparse exit 2.',
         'full-score-text writes the score to -o; stdout contains only an output/tracks receipt.',
-        'Final + continues the previous syllable, preserving the four Chinese lyric characters.',
+        'Final - sustains the previous syllable across the last note.',
         'LUFS depends on amplitude and channel count; this fixture uses 0.75 peak per channel.',
         'For this two-second clip, shortTermBins uses a shortened window rather than a full three-second window.',
-        'truePeakDBFS is the implementation linear-interpolation estimate; this does not certify BS.1770 compliance.',
-        'No Synthesizer V application, plugin, or voice library was installed or loaded.'
+        'truePeakDBFS uses a 4x windowed-sinc FIR estimate.',
+        'This script verifies offline project and audio-analysis commands.'
     ]
 }
 save('verification-report.json', report)

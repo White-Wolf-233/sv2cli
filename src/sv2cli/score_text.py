@@ -1,5 +1,5 @@
 """Full-score text export: section → bar → track → note with intervals."""
-from .timing import musical, meters
+from .timing import musical
 
 INTERVAL_NAMES = {
     0: 'P1', 1: 'm2', 2: 'M2', 3: 'm3', 4: 'M3', 5: 'P4',
@@ -9,7 +9,7 @@ DISSONANT = {1, 2, 6, 10, 11}  # m2 M2 TT m7 M7
 
 def _interval(semitones):
     s = abs(semitones)
-    name = INTERVAL_NAMES.get(s % 12, 'P8' if s % 12 == 0 else '?')
+    name = 'P8' if s and s % 12 == 0 else INTERVAL_NAMES[s % 12]
     octaves = s // 12
     direction = 'up' if semitones > 0 else 'dn' if semitones < 0 else 'uni'
     dissonant = (s % 12) in DISSONANT
@@ -30,9 +30,6 @@ def export(project):
     rows = project.notes()
     if not rows:
         return {'tracks': []}
-
-    # Build bar map once
-    meter_marks = meters(project)
 
     def blick_to_qbeats(b):
         return float(Fraction(b, QUARTER))

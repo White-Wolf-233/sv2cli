@@ -30,7 +30,7 @@ def run(job):
     write_json(work/'coverage.json',coverage)
     event('coverage',missingWindows=len(coverage['missingWindows']),expectedWindows=coverage['expectedNoteCount'],
           unexpectedSilence=coverage['unexpectedSilence'][:8],missingWindowExamples=coverage['missingWindows'][:8])
-    if not coverage['valid']:raise SVError(f"Single render is incomplete: {len(coverage['missingWindows'])}/{coverage['expectedNoteCount']} note windows missing, {len(coverage['unexpectedSilence'])} unexpected silent spans. Inspect {work/'coverage.json'}; fix the source/plugin failure, do not retry until a lucky pass.",'incomplete_audio')
+    if not coverage['valid']:raise SVError(f"Render incomplete: {len(coverage['missingWindows'])}/{coverage['expectedNoteCount']} note windows missing, {len(coverage['unexpectedSilence'])} unexpected silent spans. Details: {work/'coverage.json'}.",'incomplete_audio')
     report=check(target,expected_seconds=job['duration'])
     if not report['valid']:raise SVError(f"Single render failed audio checks: {report['failures']}",'invalid_audio')
     report['transport']=transport;write_json(work/'result.json',report)

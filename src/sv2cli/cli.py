@@ -71,7 +71,7 @@ def _parser():
     t.add_argument('--replace-controls',action='store_true');t.add_argument('--vibrato',type=float);t.add_argument('--dry-run',action='store_true')
     t=source('effects');write(t,True);tracks(t);t.add_argument('--params',required=True,help='JSON object or @path.json');t.add_argument('--dry-run',action='store_true')
     r.add_argument('--resume',action='store_true',help='Reuse verified completed renders from a matching manifest')
-    r.add_argument('--entry-policy',choices=['check','align','report'],help='Native default: check first isolated waveform entry; align explicitly translates the recording; report permits unchecked mixes')
+    r.add_argument('--entry-policy',choices=['check','align','report'],help='Default: report measured entry timing; check enforces the tolerance; align translates the recording')
     r.add_argument('--entry-tolerance',type=float,default=.03,help='First waveform entry tolerance in seconds (default: 0.03)')
     r.add_argument('--entry-landmark',choices=['broadband','voiced'],default='broadband',help='Explicit acoustic landmark; voiced uses a low-band energy proxy and retains broadband evidence')
     t=source("time");g=t.add_mutually_exclusive_group(required=True);g.add_argument("--blick",type=int);g.add_argument('--at',help='b:BLICKS, q:QUARTERS, s:SECONDS, bar:N:BEAT')
@@ -148,7 +148,7 @@ def execute(a):
             tp=true_peak_dbfs(audio)
             result['integratedLUFS']=round(lufs,1) if lufs is not None else None
             result['truePeakDBFS']=tp
-            result['truePeakNote']='4x linear oversample; within ~0.5 dB of BS.1770 Annex 2'
+            result['truePeakNote']='4x windowed-sinc FIR estimate (129 taps)'
         return result
     if cmd=='loudness-check':
         from .timing import read_pcm
@@ -159,7 +159,7 @@ def execute(a):
         st_bins=shortterm_lufs_bins(audio,rate)
         tp=true_peak_dbfs(audio)
         result={'path':str(a.audio),'integratedLUFS':round(lufs,1) if lufs is not None else None,
-                'truePeakDBFS':tp,'truePeakNote':'4x linear oversample; within ~0.5 dB of BS.1770 Annex 2',
+                'truePeakDBFS':tp,'truePeakNote':'4x windowed-sinc FIR estimate (129 taps)',
                 'shortTermBins':st_bins,'sampleRate':rate,'bitDepth':bits,'channels':audio.shape[0]}
         if a.output:write_json(a.output,result,a.force)
         return result

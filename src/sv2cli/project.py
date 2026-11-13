@@ -267,7 +267,12 @@ class Project:
                     continue
                 ns = group.get("notes", [])
                 off = ref.get("blickOffset", 0)
-                if ns:
+                if ref is track.get("mainRef"):
+                    # Main groups use the plugin's open-ended range. Finite
+                    # note-derived bounds can leave newly created vocals silent.
+                    begin = min(0, off + min((n['onset'] for n in ns), default=0))
+                    ref["blickAbsoluteBegin"], ref["blickAbsoluteEnd"] = begin, -1
+                elif ns:
                     ref["blickAbsoluteBegin"] = off+min(n["onset"] for n in ns)
                     ref["blickAbsoluteEnd"] = off+max(n["onset"]+n["duration"] for n in ns)
                 else:

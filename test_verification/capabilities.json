@@ -84,7 +84,9 @@
       "functions": [
         "gain/pan/mute/solo",
         "validated room/EQ/compressor/reverb fields and schema",
-        "explicit sample-peak normalization and dBFS reports"
+        "explicit sample-peak normalization and dBFS reports",
+        "integrated and short-term LUFS",
+        "4x FIR true-peak estimate"
       ]
     },
     "conversion": {

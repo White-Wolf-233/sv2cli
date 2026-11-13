@@ -56,20 +56,20 @@
       "好",
       "世",
       "界",
-      "+"
+      "-"
     ]
   },
   "environment": {
     "python": "C:\\Users\\ykx20\\scoop\\apps\\python312\\current\\python.exe",
     "packagePath": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\src\\sv2cli\\__init__.py",
-    "numpy": "2.2.6",
+    "numpy": "2.4.4",
     "scipy": "1.18.0",
     "PYTHONPATH": "C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\src;C:\\Users\\ykx20\\Desktop\\Workspace\\sv2cli\\test_verification\\_deps"
   },
   "sourceSHA256": {
-    "src\\sv2cli\\cli.py": "6476bda2a8bb41c2a1ddc0dc713648e2118f65271f775ee701ee52390b4ff2e9",
-    "src\\sv2cli\\score_text.py": "d436bec8eca4d32779789c12e868b81d3319b03a894268f724b6e9c5d4a598f4",
-    "src\\sv2cli\\loudness.py": "08ea6777d614634d0935c60070449e5aa45e74065b43e047c8e76f1a9c545e79"
+    "src\\sv2cli\\cli.py": "899c72b1b48be0cab807887dd55fd20f773ba42f03c4ad5f4c3ad961c9aca16d",
+    "src\\sv2cli\\score_text.py": "0e146c51fbb54fbe7ff7ddd0672046ba34d6b89891559e4c3dfdf1ad473fa9ba",
+    "src\\sv2cli\\loudness.py": "bf3f471b556ba175a3fb377a80b34bc187b4dc4878b3780c994e035efa39e05c"
   },
   "commands": [
     {
@@ -90,9 +90,9 @@
         "sv2cli",
         "doctor"
       ],
-      "exitCode": 2,
+      "exitCode": 0,
       "stdout": "doctor.stdout.txt",
-      "stderr": "doctor.stderr.txt"
+      "stderr": "doctor.stdout.stderr.txt"
     },
     {
       "command": [
@@ -223,11 +223,10 @@
   "limitations": [
     "Requested nested full-score-text and loudness-check invocations fail with argparse exit 2.",
     "full-score-text writes the score to -o; stdout contains only an output/tracks receipt.",
-    "Final + continues the previous syllable, preserving the four Chinese lyric characters.",
+    "Final - sustains the previous syllable across the last note.",
     "LUFS depends on amplitude and channel count; this fixture uses 0.75 peak per channel.",
     "For this two-second clip, shortTermBins uses a shortened window rather than a full three-second window.",
-    "truePeakDBFS is the implementation linear-interpolation estimate; this does not certify BS.1770 compliance.",
-    "No Synthesizer V application, plugin, or voice library was installed or loaded.",
-    "Ancillary doctor failed with access denied on the protected Dreamtonics app-data directory. Its raw stderr is saved in doctor.stderr.txt; this does not affect the offline feature checks."
+    "truePeakDBFS uses a 4x windowed-sinc FIR estimate.",
+    "This script verifies offline project and audio-analysis commands."
   ]
 }

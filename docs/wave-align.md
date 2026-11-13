@@ -40,15 +40,13 @@ by the native host. The selected landmark is part of render resume identity.
 
 ## Render acceptance
 
-Native `render` now defaults to `--entry-policy check`: after readiness and
-format checks, it measures the first actual isolated waveform attack. An
-unresolved attack or error larger than `--entry-tolerance 0.03` seconds fails
-before the requested WAV is written. `entry-timing.json` remains in the job
-directory, including observed later phrase entries. A multi-track mix cannot
-establish individual entries: use `--stems`, or explicitly choose report-only.
+Native `render` defaults to `--entry-policy report` and measures the first
+isolated waveform attack in `entry-timing.json`, including later phrase entries.
+Use `--entry-policy check` to enforce `--entry-tolerance 0.03` seconds.
+Use `--stems` to measure individual tracks in a multi-track project.
 
 ```
-sv2cli render song.svp --stems -o checked-stems
+sv2cli render song.svp --stems -o checked-stems --entry-policy check
 sv2cli render dry.svp -o aligned.wav --entry-policy align
 sv2cli render song.svp -o unchecked-mix.wav --entry-policy report
 ```

@@ -2,7 +2,7 @@
   "path": "test_verification/test.wav",
   "integratedLUFS": -3.2,
   "truePeakDBFS": -2.5,
-  "truePeakNote": "4x linear oversample; within ~0.5 dB of BS.1770 Annex 2",
+  "truePeakNote": "4x windowed-sinc FIR estimate (129 taps)",
   "shortTermBins": [
     {
       "second": 0,
